@@ -10,7 +10,16 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Button Content="Elegir carpeta" Click="ChooseFolder" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" Padding="14,7" />
-        <ListBox Grid.Row="1" Margin="0,16" DisplayMemberPath="DisplayName" ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}" />
+        <ListBox Grid.Row="1" Margin="0,16" ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,2" ToolTip="{Binding FilePath}">
+                        <TextBlock Text="{Binding DisplayName}" />
+                        <TextBlock Text="{Binding FolderName}" FontSize="11" Opacity="0.6" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         <Button Grid.Row="2" Content="Reproducir seleccionada" Click="PlaySelected" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" Padding="14,7" />
         <TextBlock Grid.Row="3" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}" />
     </Grid>

@@ -18,7 +18,7 @@ public sealed class MusicFileScanner : IMusicFileScanner
             var options = new EnumerationOptions
             {
                 RecurseSubdirectories = true,
-                IgnoreInaccessible = false,
+                IgnoreInaccessible = true,
                 AttributesToSkip = FileAttributes.ReparsePoint
             };
             foreach (var file in Directory.EnumerateFiles(folder, "*", options))
@@ -27,6 +27,8 @@ public sealed class MusicFileScanner : IMusicFileScanner
                 if (Extensions.Contains(Path.GetExtension(file)))
                     songs.Add(new Song(Path.GetFullPath(file)));
             }
-            return songs.OrderBy(song => song.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
+            return songs.OrderBy(song => song.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(song => song.FilePath, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         }, cancellationToken);
 }

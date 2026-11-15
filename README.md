@@ -42,6 +42,6 @@ El detalle de cada sprint se acordará en `docs/SPRINTS.md`. Para el MVP, la bib
 
 Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop instalada, o ejecuta `dotnet build MusicLayer.sln` con el SDK de .NET 10. La restauración requiere acceso a NuGet para descargar NAudio.
 
-Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana inicial: elige una carpeta, selecciona un archivo y pulsa Reproducir seleccionada. El escaneo incluye subcarpetas y evita enlaces de sistema de archivos. Una carpeta inaccesible produce un error visible. La decodificación usa los códecs de Media Foundation de Windows.
+Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana inicial: elige una carpeta, selecciona un archivo y pulsa Reproducir seleccionada. El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows.
 
 Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio.

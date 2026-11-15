@@ -19,4 +19,11 @@ public sealed class SongTests
         Assert.True(Path.IsPathFullyQualified(song.FilePath));
         Assert.Equal("My Song", song.DisplayName);
     }
+
+    [Fact]
+    public void FolderNameIsParentDirectory()
+    {
+        var song = new Song(Path.Combine("music", "album", "track.mp3"));
+        Assert.Equal("album", song.FolderName);
+    }
 }
