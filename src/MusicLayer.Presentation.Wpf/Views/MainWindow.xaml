@@ -9,9 +9,9 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Button x:Name="FolderButton" Content="Elegir carpeta" Click="ChooseFolder" HorizontalAlignment="Left" Padding="14,7" />
-        <ListBox x:Name="SongsList" Grid.Row="1" Margin="0,16" DisplayMemberPath="DisplayName" />
-        <Button x:Name="PlayButton" Grid.Row="2" Content="Reproducir seleccionada" Click="PlaySelected" HorizontalAlignment="Left" Padding="14,7" />
-        <TextBlock x:Name="StatusText" Grid.Row="3" Margin="0,12,0,0" TextWrapping="Wrap" Text="Elige una carpeta con música." />
+        <Button Content="Elegir carpeta" Click="ChooseFolder" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" Padding="14,7" />
+        <ListBox Grid.Row="1" Margin="0,16" DisplayMemberPath="DisplayName" ItemsSource="{Binding Songs}" SelectedItem="{Binding SelectedSong}" />
+        <Button Grid.Row="2" Content="Reproducir seleccionada" Click="PlaySelected" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" Padding="14,7" />
+        <TextBlock Grid.Row="3" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}" />
     </Grid>
 </Window>

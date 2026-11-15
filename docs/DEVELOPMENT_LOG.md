@@ -15,4 +15,12 @@ Agrega una entrada por cada error, bug o aprendizaje relevante.
 
 - Se añadieron escaneo asíncrono, casos de uso y reproducción con NAudio mediante una ventana WPF mínima.
 - El reproductor serializa cambios y cierre para liberar la salida y el lector anteriores.
-- Pendiente: validación manual con audio real y distintos formatos; pruebas de dominio y aplicación en el Sprint 2.
+- Pendiente: validación manual con audio real y distintos formatos.
+
+## Revisión del Sprint 1
+
+- Composición DI en App y estado de presentación en MainViewModel.
+- Limpieza al finalizar audio y manejo de errores durante el cierre.
+- Validación de rutas de Song y existencia del archivo antes de reproducir; escaneo recursivo.
+- Se retiraron archivos vacíos de funcionalidades futuras. Se crearán al implementar su sprint.
+- Se añadieron y ejecutaron ocho pruebas xUnit: dominio, archivos inexistentes, cancelación, escaneo recursivo y finalización del ViewModel con reproductor falso.

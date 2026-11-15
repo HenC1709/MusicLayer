@@ -8,7 +8,7 @@ Infrastructure → Application + Domain
 Presentation.Wpf → Infrastructure (composition root)
 ```
 
-Domain contiene reglas independientes del framework. Application organiza los casos de uso y define los contratos. Infrastructure implementará los contratos de audio, sistema de archivos, metadatos y SQLite. WPF será responsable de la interacción con el usuario y la composición de dependencias.
+Domain contiene reglas independientes del framework. Application organiza los casos de uso y define los contratos. Infrastructure implementa audio y sistema de archivos. App.xaml.cs registra los servicios en Microsoft.Extensions.DependencyInjection y crea la ventana. MainViewModel depende de IAudioPlayer y los casos de uso; la ventana se limita a bindings, selección de carpeta y cierre. Metadatos y SQLite se añadirán en sprints posteriores.
 
 ## SQLite local
 
@@ -18,4 +18,4 @@ SQLite se implementará en el Sprint 4. El esquema se definirá entonces para gu
 
 ## Audio y concurrencia
 
-La interfaz de reproducción prevista será asíncrona para evitar bloquear WPF. La implementación deberá liberar el recurso de audio anterior al cambiar de canción y mantener la interacción con controles de UI en el hilo correspondiente.
+La reproducción se inicia fuera del hilo de WPF. PlaybackEnded comunica finalización o error sin exponer tipos de NAudio. El reproductor libera salida y lector antes de notificar; los callbacks de salidas anteriores se ignoran. El ViewModel publica los cambios de estado en el contexto de UI y cancela y espera su operación pendiente antes de liberar su CancellationTokenSource. El contenedor dispone el reproductor al cerrar y la ventana captura errores de limpieza.

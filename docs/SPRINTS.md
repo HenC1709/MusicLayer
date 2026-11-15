@@ -12,9 +12,9 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 
 - Objetivo: elegir una carpeta, listar canciones y reproducir una selección.
 - Alcance: entidad Song, contratos de escaneo y audio, casos de uso ScanMusicFolder y PlaySong, implementaciones locales y ventana de prueba WPF.
-- Decisiones: escaneo del primer nivel de la carpeta, biblioteca en memoria, nombre de archivo como título. NAudio 2.2.1 utiliza Media Foundation para decodificar; los formatos disponibles dependen de los códecs de Windows.
+- Decisiones: escaneo recursivo sin seguir enlaces, biblioteca en memoria, nombre de archivo como título. NAudio 2.2.1 utiliza Media Foundation para decodificar; los formatos disponibles dependen de los códecs de Windows.
 - Ciclo de vida: una instancia del reproductor por ventana, acceso serializado y liberación del audio al cambiar de canción o cerrar. La cola y la sesión de reproducción se abordarán en el Sprint 2.
-- Contrato de audio inicial: PlayAsync inicia un archivo y DisposeAsync libera los recursos. Las operaciones de pausa, reanudación, volumen, posición y eventos de finalización se definirán junto al control de reproducción en el Sprint 2.
+- Contrato de audio: PlayAsync inicia un archivo, PlaybackEnded notifica finalización o error y DisposeAsync libera los recursos. Pausa, reanudación, volumen y posición se definirán en el Sprint 2.
 - Criterios de aceptación: build correcto; elegir una carpeta y ver sus archivos MP3, WAV y FLAC; escuchar la selección; cambiar de archivo; cerrar y liberar audio; ver mensajes para carpeta vacía o archivo ilegible.
 - Estado: implementación inicial; pendiente validar manualmente audio e interacción en Windows.
 

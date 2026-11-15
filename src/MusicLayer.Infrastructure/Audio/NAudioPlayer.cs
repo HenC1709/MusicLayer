@@ -5,62 +5,73 @@ namespace MusicLayer.Infrastructure.Audio;
 
 public sealed class NAudioPlayer : IAudioPlayer
 {
-    private readonly SemaphoreSlim gate = new(1, 1);
+    private readonly object gate = new();
     private WaveOutEvent? output;
     private MediaFoundationReader? reader;
     private bool disposed;
+    public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
 
-    public async Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
-    {
-        await gate.WaitAsync(cancellationToken);
-        try
+    public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
+        => Task.Run(() =>
         {
-            ObjectDisposedException.ThrowIf(disposed, this);
-            await Task.Run(() =>
+            lock (gate)
             {
+                ObjectDisposedException.ThrowIf(disposed, this);
                 cancellationToken.ThrowIfCancellationRequested();
                 ReleaseAudio();
                 try
                 {
                     reader = new MediaFoundationReader(filePath);
                     output = new WaveOutEvent();
+                    output.PlaybackStopped += OnStopped;
                     output.Init(reader);
                     output.Play();
                 }
-                catch
-                {
-                    ReleaseAudio();
-                    throw;
-                }
-            }, cancellationToken);
-        }
-        finally
+                catch { ReleaseAudio(); throw; }
+            }
+        }, cancellationToken);
+
+    private void OnStopped(object? sender, StoppedEventArgs e)
+    {
+        // Cleanup runs outside the audio callback; stale callbacks are ignored.
+        _ = Task.Run(() =>
         {
-            gate.Release();
-        }
+            lock (gate)
+            {
+                if (disposed || !ReferenceEquals(sender, output)) return;
+                Exception? error = e.Exception;
+                try { ReleaseAudio(); }
+                catch (Exception cleanupError) { error ??= cleanupError; }
+                PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
+            }
+        });
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync() => new(Task.Run(() =>
     {
-        await gate.WaitAsync();
-        try
+        lock (gate)
         {
             if (disposed) return;
             disposed = true;
-            await Task.Run(ReleaseAudio);
+            ReleaseAudio();
         }
-        finally
-        {
-            gate.Release();
-        }
-    }
+    }));
 
     private void ReleaseAudio()
     {
-        output?.Stop();
-        output?.Dispose();
+        var oldOutput = output;
+        var oldReader = reader;
         output = null;
-        reader?.Dispose();
         reader = null;
+        try
+        {
+            if (oldOutput is not null)
+            {
+                oldOutput.PlaybackStopped -= OnStopped;
+                try { oldOutput.Stop(); }
+                finally { oldOutput.Dispose(); }
+            }
+        }
+        finally { oldReader?.Dispose(); }
     }
 }

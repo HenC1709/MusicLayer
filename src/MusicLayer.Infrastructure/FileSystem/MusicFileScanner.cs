@@ -15,7 +15,13 @@ public sealed class MusicFileScanner : IMusicFileScanner
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(folder);
             var songs = new List<Song>();
-            foreach (var file in Directory.EnumerateFiles(folder))
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = false,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            foreach (var file in Directory.EnumerateFiles(folder, "*", options))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (Extensions.Contains(Path.GetExtension(file)))
