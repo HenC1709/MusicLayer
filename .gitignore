@@ -1,0 +1,19 @@
+# Build outputs
+**/bin/
+**/obj/
+artifacts/
+
+# Local database and user-specific data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# IDE and local settings
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
