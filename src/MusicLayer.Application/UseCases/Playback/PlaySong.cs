@@ -6,5 +6,11 @@ namespace MusicLayer.Application.UseCases.Playback;
 public sealed class PlaySong(IAudioPlayer player)
 {
     public Task ExecuteAsync(Song song, CancellationToken cancellationToken = default)
-        => player.PlayAsync(song.FilePath, cancellationToken);
+    {
+        ArgumentNullException.ThrowIfNull(song);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!File.Exists(song.FilePath))
+            throw new FileNotFoundException("El archivo de música ya no existe.", song.FilePath);
+        return player.PlayAsync(song.FilePath, cancellationToken);
+    }
 }

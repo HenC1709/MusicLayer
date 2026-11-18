@@ -15,12 +15,20 @@ public sealed class MusicFileScanner : IMusicFileScanner
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(folder);
             var songs = new List<Song>();
-            foreach (var file in Directory.EnumerateFiles(folder))
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            foreach (var file in Directory.EnumerateFiles(folder, "*", options))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (Extensions.Contains(Path.GetExtension(file)))
                     songs.Add(new Song(Path.GetFullPath(file)));
             }
-            return songs.OrderBy(song => song.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
+            return songs.OrderBy(song => song.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(song => song.FilePath, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         }, cancellationToken);
 }

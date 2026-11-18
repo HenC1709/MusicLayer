@@ -2,7 +2,7 @@
 
 Reproductor de música de escritorio para Windows, desarrollado en C# con WPF. El proyecto seguirá Clean Architecture y usará SQLite para guardar datos locales.
 
-## Alcance inicial
+## Alcance del MVP
 
 - Cargar una carpeta y construir una biblioteca con archivos MP3, WAV y FLAC.
 - Reproducir, pausar y detener canciones; navegar por la cola.
@@ -21,6 +21,8 @@ Los metadatos, las carátulas y la persistencia SQLite quedan para el Sprint 4. 
 | `MusicLayer.Presentation.Wpf` | Aplicación de escritorio y presentación WPF. |
 | `MusicLayer.Domain.Tests` | Pruebas de reglas de dominio. |
 | `MusicLayer.Application.Tests` | Pruebas de casos de uso. |
+| `MusicLayer.Infrastructure.Tests` | Pruebas de escaneo de archivos. |
+| `MusicLayer.Presentation.Tests` | Pruebas del ViewModel. |
 
 ## Plan de trabajo
 
@@ -42,4 +44,8 @@ El detalle de cada sprint se acordará en `docs/SPRINTS.md`. Para el MVP, la bib
 
 Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop instalada, o ejecuta `dotnet build MusicLayer.sln` con el SDK de .NET 10. La restauración requiere acceso a NuGet para descargar NAudio.
 
-Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana inicial: elige una carpeta, selecciona un archivo y pulsa Reproducir seleccionada. Se escanea el primer nivel de la carpeta. La decodificación usa los códecs de Media Foundation de Windows. Los proyectos de pruebas son marcadores y todavía no incluyen framework ni pruebas ejecutables. Consulta `docs/SPRINTS.md` para el alcance y la validación manual del Sprint 1.
+Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana. Elige una carpeta, selecciona un archivo y pulsa **Reproducir seleccionada**. Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Si todavía no has reproducido una canción de la cola, **Siguiente** inicia la primera. Al llegar a un extremo, la cola conserva su posición.
+
+El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows. La pausa, la reanudación, la detención, el volumen y la barra de progreso siguen pendientes.
+
+Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio.
