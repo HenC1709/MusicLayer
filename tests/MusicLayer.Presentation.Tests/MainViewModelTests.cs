@@ -157,6 +157,87 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task VolumeCanBeSetBeforeAndDuringPlaybackAndIsKeptByTransportControls()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var player = new FakePlayer();
+            var track = new Song(path);
+            await using var vm = CreateViewModel(player, new FakeScanner(track, track));
+            await vm.LoadFolderAsync("cualquier-carpeta");
+
+            Assert.Equal(100, vm.VolumePercent);
+            vm.VolumePercent = 25;
+            await vm.PlayNextAsync();
+            Assert.Equal(new[] { 25 }, player.VolumesAtStart);
+
+            vm.VolumePercent = 0;
+            Assert.Equal(0, player.VolumePercent);
+            Assert.Equal(1, player.PlayCount);
+
+            await vm.PauseAsync();
+            await vm.ResumeAsync();
+            Assert.Equal(0, player.VolumePercent);
+            await vm.StopAsync();
+            await vm.PlayNextAsync();
+
+            Assert.Equal(0, vm.VolumePercent);
+            Assert.Equal(new[] { 25, 0 }, player.VolumeRequests);
+            Assert.Equal(new[] { 25, 0 }, player.VolumesAtStart);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task PlaybackWaitsForTheLatestVolumeAfterRapidChanges()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var firstAdjustment = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var player = new FakePlayer
+            {
+                ApplyVolume = percent => percent == 20 ? firstAdjustment.Task : Task.CompletedTask
+            };
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path)));
+            await vm.LoadFolderAsync("cualquier-carpeta");
+
+            vm.VolumePercent = 20;
+            vm.VolumePercent = 40;
+            vm.VolumePercent = 65;
+            var playback = vm.PlayNextAsync();
+            var playCountBeforeAdjustment = player.PlayCount;
+            firstAdjustment.SetResult();
+            await playback;
+
+            Assert.Equal(0, playCountBeforeAdjustment);
+            Assert.Equal(new[] { 20, 65 }, player.VolumeRequests);
+            Assert.Equal(new[] { 65 }, player.VolumesAtStart);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task VolumeFailureRestoresLastAppliedValue()
+    {
+        var player = new FakePlayer
+        {
+            ApplyVolume = percent => percent == 40
+                ? Task.FromException(new IOException("audio device unavailable"))
+                : Task.CompletedTask
+        };
+        await using var vm = CreateViewModel(player, new FakeScanner());
+
+        vm.VolumePercent = 75;
+        vm.VolumePercent = 40;
+
+        Assert.Equal(75, vm.VolumePercent);
+        Assert.Equal(75, player.VolumePercent);
+        Assert.Contains("audio device unavailable", vm.Status);
+    }
+
+    [Fact]
     public async Task CompletionUpdatesViewModelAndDisposalUnsubscribes()
     {
         var player = new FakePlayer();
@@ -195,7 +276,7 @@ public sealed class MainViewModelTests
 
     private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner)
         => new(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)),
-            new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player));
+            new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player), new SetPlaybackVolume(player));
 
     private sealed class FakeScanner(params Song[] songs) : IMusicFileScanner
     {
@@ -209,10 +290,15 @@ public sealed class MainViewModelTests
         public int PauseCount { get; private set; }
         public int ResumeCount { get; private set; }
         public int StopCount { get; private set; }
+        public int VolumePercent { get; private set; } = IAudioPlayer.DefaultVolumePercent;
+        public List<int> VolumeRequests { get; } = [];
+        public List<int> VolumesAtStart { get; } = [];
+        public Func<int, Task> ApplyVolume { get; init; } = _ => Task.CompletedTask;
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
         public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
         {
             PlayCount++;
+            VolumesAtStart.Add(VolumePercent);
             return Task.CompletedTask;
         }
         public void Complete(Exception? error = null) => PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
@@ -232,6 +318,13 @@ public sealed class MainViewModelTests
         {
             StopCount++;
             return Task.CompletedTask;
+        }
+
+        public async Task SetVolumeAsync(int percent, CancellationToken cancellationToken = default)
+        {
+            VolumeRequests.Add(percent);
+            await ApplyVolume(percent);
+            VolumePercent = percent;
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;

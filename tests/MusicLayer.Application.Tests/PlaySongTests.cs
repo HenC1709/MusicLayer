@@ -51,6 +51,7 @@ public sealed class PlaySongTests
         public Task<bool> PauseAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<bool> ResumeAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SetVolumeAsync(int percent, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

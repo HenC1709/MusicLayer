@@ -58,6 +58,11 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 - Detener libera el lector y la salida, deshabilita Pausar y Reanudar y conserva el índice de la cola. Volver a reproducir el archivo lo inicia desde el principio.
 - Validación manual en Windows. Probar Detener mientras suena una canción y mientras está en pausa. Comprobar que el audio se corta, que el archivo se puede renombrar si ninguna otra aplicación lo usa y que la navegación parte del mismo índice.
 
+### Volumen
+
+- El deslizador ajusta el volumen de 0 a 100. MusicLayer aplica el valor al audio activo y lo conserva para la siguiente canción durante la sesión. Guardar el valor entre reinicios queda para el Sprint 4.
+- Validación manual en Windows. Bajar el volumen antes de iniciar una canción. Con el audio en reproducción, mover el deslizador hasta 0 y volver a subirlo. Comprobar que el mismo nivel se mantiene tras pausar, reanudar y pasar a otra canción.
+
 ## Plantilla para cada sprint
 
 ### Sprint
