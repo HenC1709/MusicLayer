@@ -4,6 +4,8 @@ public interface IAudioPlayer : IAsyncDisposable
 {
     event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
     Task PlayAsync(string filePath, CancellationToken cancellationToken = default);
+    Task<bool> PauseAsync(CancellationToken cancellationToken = default);
+    Task<bool> ResumeAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class PlaybackEndedEventArgs(Exception? error) : EventArgs

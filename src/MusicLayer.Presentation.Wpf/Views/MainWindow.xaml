@@ -20,11 +20,13 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <StackPanel Grid.Row="2" Orientation="Horizontal" IsEnabled="{Binding IsReady}">
+        <WrapPanel Grid.Row="2" IsEnabled="{Binding IsReady}">
             <Button Content="Anterior" Click="PlayPrevious" Padding="14,7" />
             <Button Content="Reproducir seleccionada" Click="PlaySelected" Margin="8,0" Padding="14,7" />
             <Button Content="Siguiente" Click="PlayNext" Padding="14,7" />
-        </StackPanel>
+            <Button Content="Pausar" Click="Pause" IsEnabled="{Binding CanPause}" Margin="8,0,0,0" Padding="14,7" />
+            <Button Content="Reanudar" Click="Resume" IsEnabled="{Binding CanResume}" Margin="8,0,0,0" Padding="14,7" />
+        </WrapPanel>
         <TextBlock Grid.Row="3" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}" />
     </Grid>
 </Window>

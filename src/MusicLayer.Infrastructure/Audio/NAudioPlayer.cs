@@ -31,6 +31,36 @@ public sealed class NAudioPlayer : IAudioPlayer
             }
         }, cancellationToken);
 
+    public Task<bool> PauseAsync(CancellationToken cancellationToken = default)
+        => Task.Run(() =>
+        {
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (output is not { PlaybackState: PlaybackState.Playing } activeOutput)
+                    return false;
+
+                activeOutput.Pause();
+                return true;
+            }
+        }, cancellationToken);
+
+    public Task<bool> ResumeAsync(CancellationToken cancellationToken = default)
+        => Task.Run(() =>
+        {
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (output is not { PlaybackState: PlaybackState.Paused } activeOutput)
+                    return false;
+
+                activeOutput.Play();
+                return true;
+            }
+        }, cancellationToken);
+
     private void OnStopped(object? sender, StoppedEventArgs e)
     {
         // Cleanup runs outside the audio callback; stale callbacks are ignored.

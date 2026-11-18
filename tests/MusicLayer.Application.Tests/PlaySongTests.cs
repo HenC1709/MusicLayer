@@ -48,6 +48,8 @@ public sealed class PlaySongTests
             return Task.CompletedTask;
         }
 
+        public Task<bool> PauseAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task<bool> ResumeAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

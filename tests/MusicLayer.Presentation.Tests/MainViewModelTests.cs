@@ -15,7 +15,7 @@ public sealed class MainViewModelTests
     {
         var player = new FakePlayer();
         var scanner = new FakeScanner(new Song("a.mp3"), new Song("b.wav"));
-        await using var vm = new MainViewModel(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)));
+        await using var vm = CreateViewModel(player, scanner);
 
         await vm.LoadFolderAsync("cualquier-carpeta");
 
@@ -32,7 +32,7 @@ public sealed class MainViewModelTests
             var song = new Song(path);
             var player = new FakePlayer();
             var scanner = new FakeScanner(song, song);
-            await using var vm = new MainViewModel(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)));
+            await using var vm = CreateViewModel(player, scanner);
 
             await vm.LoadFolderAsync("cualquier-carpeta");
             Assert.Equal(-1, vm.SelectedIndex);
@@ -46,6 +46,70 @@ public sealed class MainViewModelTests
             await vm.PlayPreviousAsync();
             Assert.Equal(0, vm.SelectedIndex);
             Assert.Equal(3, player.PlayCount);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task PauseKeepsQueuePositionAndIsOnlyAvailableWhilePlaying()
+    {
+        var first = Path.GetTempFileName();
+        var second = Path.GetTempFileName();
+        try
+        {
+            var player = new FakePlayer();
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(first), new Song(second)));
+            await vm.LoadFolderAsync("cualquier-carpeta");
+            Assert.False(vm.CanPause);
+            await vm.PauseAsync();
+            Assert.Equal(0, player.PauseCount);
+
+            await vm.PlayNextAsync();
+            Assert.True(vm.CanPause);
+            await vm.PauseAsync();
+            Assert.False(vm.CanPause);
+            Assert.Equal("Reproducción pausada.", vm.Status);
+            Assert.Equal(0, vm.SelectedIndex);
+            await vm.PauseAsync();
+            Assert.Equal(1, player.PauseCount);
+            Assert.Equal(1, player.PlayCount);
+
+            await vm.PlayNextAsync();
+            Assert.Equal(1, vm.SelectedIndex);
+            Assert.True(vm.CanPause);
+        }
+        finally
+        {
+            File.Delete(first);
+            File.Delete(second);
+        }
+    }
+
+    [Fact]
+    public async Task ResumeRestartsPausedOutputWithoutPlayingTheFileAgain()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var player = new FakePlayer();
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path)));
+            await vm.LoadFolderAsync("cualquier-carpeta");
+            await vm.ResumeAsync();
+            Assert.Equal(0, player.ResumeCount);
+
+            await vm.PlayNextAsync();
+            Assert.False(vm.CanResume);
+            await vm.PauseAsync();
+            Assert.True(vm.CanResume);
+
+            await vm.ResumeAsync();
+            Assert.Equal("Reproducción reanudada.", vm.Status);
+            Assert.Equal(0, vm.SelectedIndex);
+            Assert.False(vm.CanResume);
+            Assert.True(vm.CanPause);
+            await vm.ResumeAsync();
+            Assert.Equal(1, player.ResumeCount);
+            Assert.Equal(1, player.PlayCount);
         }
         finally { File.Delete(path); }
     }
@@ -77,7 +141,7 @@ public sealed class MainViewModelTests
         SynchronizationContext.SetSynchronizationContext(new ImmediateContext());
         try
         {
-            return new MainViewModel(player, new ScanMusicFolder(new FakeScanner()), new PlaybackSession(new PlaySong(player)));
+            return CreateViewModel(player, new FakeScanner());
         }
         finally { SynchronizationContext.SetSynchronizationContext(previous); }
     }
@@ -86,6 +150,10 @@ public sealed class MainViewModelTests
     {
         public override void Post(SendOrPostCallback callback, object? state) => callback(state);
     }
+
+    private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner)
+        => new(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)),
+            new PausePlayback(player), new ResumePlayback(player));
 
     private sealed class FakeScanner(params Song[] songs) : IMusicFileScanner
     {
@@ -96,6 +164,8 @@ public sealed class MainViewModelTests
     private sealed class FakePlayer : IAudioPlayer
     {
         public int PlayCount { get; private set; }
+        public int PauseCount { get; private set; }
+        public int ResumeCount { get; private set; }
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
         public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
         {
@@ -103,6 +173,18 @@ public sealed class MainViewModelTests
             return Task.CompletedTask;
         }
         public void Complete(Exception? error = null) => PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
+        public Task<bool> PauseAsync(CancellationToken cancellationToken = default)
+        {
+            PauseCount++;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ResumeAsync(CancellationToken cancellationToken = default)
+        {
+            ResumeCount++;
+            return Task.FromResult(true);
+        }
+
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

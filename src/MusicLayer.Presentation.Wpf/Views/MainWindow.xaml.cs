@@ -33,6 +33,12 @@ public partial class MainWindow : Window
     private async void PlayNext(object sender, RoutedEventArgs e)
         => await viewModel.PlayNextAsync();
 
+    private async void Pause(object sender, RoutedEventArgs e)
+        => await viewModel.PauseAsync();
+
+    private async void Resume(object sender, RoutedEventArgs e)
+        => await viewModel.ResumeAsync();
+
     protected override async void OnClosing(CancelEventArgs e)
     {
         if (canClose) { base.OnClosing(e); return; }
