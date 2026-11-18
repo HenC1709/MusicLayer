@@ -47,6 +47,12 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 - La ventana conserva una sesión durante su ciclo de vida. Al cargar una carpeta reemplaza la cola y los botones Anterior y Siguiente navegan desde la última posición reproducida.
 - Validación manual pendiente en Windows con audio real. Cargar una carpeta, iniciar una canción intermedia y comprobar que los botones cambian la canción y la selección visible. En ambos extremos comprobar que se conserva la posición.
 
+### Pausa y reanudación
+
+- Pausar conserva el archivo abierto, su posición y el índice de la cola. El botón está disponible mientras suena una canción y se deshabilita al pausar o finalizar.
+- Reanudar usa la salida pausada y continúa desde la misma posición. El botón solo se habilita mientras el audio está en pausa.
+- Validación manual en Windows. Reproducir una canción, pulsar Pausar y comprobar que el audio se interrumpe y se conserva la selección. Pulsar Reanudar y comprobar que continúa desde el punto de pausa. Probar Siguiente después de pausar y comprobar que se inicia la canción siguiente.
+
 ## Plantilla para cada sprint
 
 ### Sprint

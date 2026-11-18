@@ -21,6 +21,8 @@ public partial class App : System.Windows.Application
             .AddSingleton<IMusicFileScanner, MusicFileScanner>()
             .AddSingleton<ScanMusicFolder>()
             .AddSingleton<PlaySong>()
+            .AddSingleton<PausePlayback>()
+            .AddSingleton<ResumePlayback>()
             .AddSingleton<PlaybackSession>()
             .AddSingleton<MainViewModel>()
             .AddSingleton<MainWindow>()

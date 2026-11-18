@@ -46,6 +46,8 @@ Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop i
 
 Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana. Elige una carpeta, selecciona un archivo y pulsa **Reproducir seleccionada**. Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Si todavía no has reproducido una canción de la cola, **Siguiente** inicia la primera. Al llegar a un extremo, la cola conserva su posición.
 
-El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows. La pausa, la reanudación, la detención, el volumen y la barra de progreso siguen pendientes.
+Pulsa **Pausar** para interrumpir la canción actual y **Reanudar** para seguir desde la misma posición. **Reproducir seleccionada** inicia el archivo elegido desde el principio.
+
+El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows. La detención, el volumen y la barra de progreso siguen pendientes.
 
 Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio.
