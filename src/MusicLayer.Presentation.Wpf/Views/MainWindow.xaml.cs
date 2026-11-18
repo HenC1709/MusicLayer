@@ -27,6 +27,12 @@ public partial class MainWindow : Window
     private async void PlaySelected(object sender, RoutedEventArgs e)
         => await viewModel.PlaySelectedAsync();
 
+    private async void PlayPrevious(object sender, RoutedEventArgs e)
+        => await viewModel.PlayPreviousAsync();
+
+    private async void PlayNext(object sender, RoutedEventArgs e)
+        => await viewModel.PlayNextAsync();
+
     protected override async void OnClosing(CancelEventArgs e)
     {
         if (canClose) { base.OnClosing(e); return; }

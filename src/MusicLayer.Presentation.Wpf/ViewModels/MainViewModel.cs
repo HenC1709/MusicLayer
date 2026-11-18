@@ -11,44 +11,74 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
     private readonly IAudioPlayer player;
     private readonly ScanMusicFolder scanner;
-    private readonly PlaySong play;
+    private readonly PlaybackSession session;
     private readonly SynchronizationContext context;
     private readonly CancellationTokenSource lifetime = new();
     private Task pending = Task.CompletedTask;
     private bool closing;
     private bool busy;
+    private int completionVersion;
+    private int selectedIndex = -1;
     private string status = "Elige una carpeta con música.";
     private IReadOnlyList<Song> songs = [];
 
-    public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaySong play)
+    public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session)
     {
         this.player = player;
         this.scanner = scanner;
-        this.play = play;
+        this.session = session;
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
-    public Song? SelectedSong { get; set; }
+    public int SelectedIndex
+    {
+        get => selectedIndex;
+        set
+        {
+            if (selectedIndex == value) return;
+            selectedIndex = value;
+            Notify();
+        }
+    }
     public IReadOnlyList<Song> Songs { get => songs; private set { songs = value; Notify(); } }
     public string Status { get => status; private set { status = value; Notify(); } }
     public bool IsReady => !busy && !closing;
 
     public Task LoadFolderAsync(string folder) => RunAsync(async () =>
     {
-        Songs = await scanner.ExecuteAsync(folder, lifetime.Token);
-        SelectedSong = null;
-        Notify(nameof(SelectedSong));
+        var scannedSongs = await scanner.ExecuteAsync(folder, lifetime.Token);
+        await session.ReplaceQueueAsync(scannedSongs, lifetime.Token);
+        Songs = scannedSongs;
+        SelectedIndex = -1;
         Status = Songs.Count == 0 ? "La carpeta no contiene audio compatible." : $"{Songs.Count} canciones encontradas.";
     });
 
     public Task PlaySelectedAsync() => RunAsync(async () =>
     {
-        if (SelectedSong is not Song song) { Status = "Selecciona una canción."; return; }
-        Status = $"Reproduciendo: {song.DisplayName}";
-        await play.ExecuteAsync(song, lifetime.Token);
+        var index = SelectedIndex;
+        if (index < 0 || index >= Songs.Count) { Status = "Selecciona una canción."; return; }
+        await PlayAsync(token => session.PlayAtAsync(index, token), "Selecciona una canción.");
     });
+
+    public Task PlayNextAsync() => RunAsync(() =>
+        PlayAsync(session.PlayNextAsync, "No hay una canción siguiente."));
+
+    public Task PlayPreviousAsync() => RunAsync(() =>
+        PlayAsync(session.PlayPreviousAsync, "No hay una canción anterior."));
+
+    private async Task PlayAsync(Func<CancellationToken, Task<Song?>> start, string unavailable)
+    {
+        var version = completionVersion;
+        var song = await start(lifetime.Token);
+        if (song is not null)
+            SelectedIndex = session.CurrentIndex ?? -1;
+
+        // A short track may finish while the start continuation is still queued.
+        if (version == completionVersion)
+            Status = song is null ? unavailable : $"Reproduciendo: {song.DisplayName}";
+    }
 
     private Task RunAsync(Func<Task> action)
     {
@@ -71,7 +101,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         => context.Post(_ =>
         {
             if (!closing)
+            {
+                completionVersion++;
                 Status = e.Error is null ? "Reproducción finalizada." : $"Error de reproducción: {e.Error.Message}";
+            }
         }, null);
 
     public async ValueTask DisposeAsync()

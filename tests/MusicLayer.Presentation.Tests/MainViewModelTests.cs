@@ -15,12 +15,39 @@ public sealed class MainViewModelTests
     {
         var player = new FakePlayer();
         var scanner = new FakeScanner(new Song("a.mp3"), new Song("b.wav"));
-        var vm = new MainViewModel(player, new ScanMusicFolder(scanner), new PlaySong(player));
+        await using var vm = new MainViewModel(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)));
 
         await vm.LoadFolderAsync("cualquier-carpeta");
 
         Assert.Equal(2, vm.Songs.Count);
         Assert.Equal("2 canciones encontradas.", vm.Status);
+    }
+
+    [Fact]
+    public async Task NavigationUpdatesSelectionByIndexEvenWithDuplicateSongs()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path);
+            var player = new FakePlayer();
+            var scanner = new FakeScanner(song, song);
+            await using var vm = new MainViewModel(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)));
+
+            await vm.LoadFolderAsync("cualquier-carpeta");
+            Assert.Equal(-1, vm.SelectedIndex);
+            await vm.PlayNextAsync();
+            Assert.Equal(0, vm.SelectedIndex);
+            await vm.PlayNextAsync();
+            Assert.Equal(1, vm.SelectedIndex);
+            await vm.PlayNextAsync();
+            Assert.Equal(1, vm.SelectedIndex);
+            Assert.Equal("No hay una canción siguiente.", vm.Status);
+            await vm.PlayPreviousAsync();
+            Assert.Equal(0, vm.SelectedIndex);
+            Assert.Equal(3, player.PlayCount);
+        }
+        finally { File.Delete(path); }
     }
 
     [Fact]
@@ -50,7 +77,7 @@ public sealed class MainViewModelTests
         SynchronizationContext.SetSynchronizationContext(new ImmediateContext());
         try
         {
-            return new MainViewModel(player, new ScanMusicFolder(new FakeScanner()), new PlaySong(player));
+            return new MainViewModel(player, new ScanMusicFolder(new FakeScanner()), new PlaybackSession(new PlaySong(player)));
         }
         finally { SynchronizationContext.SetSynchronizationContext(previous); }
     }
@@ -68,8 +95,13 @@ public sealed class MainViewModelTests
 
     private sealed class FakePlayer : IAudioPlayer
     {
+        public int PlayCount { get; private set; }
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
-        public Task PlayAsync(string filePath, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
+        {
+            PlayCount++;
+            return Task.CompletedTask;
+        }
         public void Complete(Exception? error = null) => PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

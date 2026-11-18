@@ -27,6 +27,26 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 5. Probar una carpeta vacía y un archivo de audio corrupto; comprobar los mensajes.
 6. Cerrar durante reproducción y comprobar que el audio se detiene.
 
+## Sprint 2 — Control de reproducción
+
+### PR 1 — Cola de reproducción
+
+- La cola de Domain conserva el orden recibido y admite canciones duplicadas en índices distintos. Al cargar o reemplazar la lista, copia las canciones, expone una vista de solo lectura y reinicia la selección. Una lista vacía limpia la cola.
+- La selección explícita usa un índice desde cero. Siguiente desde una cola sin selección elige la primera canción. Anterior desde una cola sin selección, y cualquier movimiento sin destino válido, devuelve `false` y conserva la posición. La navegación no es circular.
+- Una colección nula, una canción nula o un índice inválido producen una excepción y conservan el estado anterior.
+- Las pruebas xUnit de Domain cubren la navegación, sus extremos y la protección del estado. La sesión que conservará la cola entre acciones y la conexión con el reproductor corresponden a un PR posterior.
+
+### PR 2 — Sesión de reproducción
+
+- Application conserva una cola en memoria y reutiliza `PlaySong` para iniciar una canción por índice, la siguiente o la anterior. Cada acción devuelve la canción iniciada o `null` si no hay una posición a la que navegar.
+- La sesión procesa las operaciones de una en una. Guarda la nueva posición solo cuando el reproductor confirma el inicio. Si el inicio falla o se cancela, conserva la posición previa para permitir un reintento.
+- Reemplazar la cola reinicia la selección sin iniciar o detener el audio. La integración con la ventana, el avance automático y los demás controles quedan para cambios posteriores.
+
+### Paso 3 — Navegación en la ventana
+
+- La ventana conserva una sesión durante su ciclo de vida. Al cargar una carpeta reemplaza la cola y los botones Anterior y Siguiente navegan desde la última posición reproducida.
+- Validación manual pendiente en Windows con audio real. Cargar una carpeta, iniciar una canción intermedia y comprobar que los botones cambian la canción y la selección visible. En ambos extremos comprobar que se conserva la posición.
+
 ## Plantilla para cada sprint
 
 ### Sprint
