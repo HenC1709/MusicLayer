@@ -53,6 +53,11 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 - Reanudar usa la salida pausada y continúa desde la misma posición. El botón solo se habilita mientras el audio está en pausa.
 - Validación manual en Windows. Reproducir una canción, pulsar Pausar y comprobar que el audio se interrumpe y se conserva la selección. Pulsar Reanudar y comprobar que continúa desde el punto de pausa. Probar Siguiente después de pausar y comprobar que se inicia la canción siguiente.
 
+### Detener reproducción
+
+- Detener libera el lector y la salida, deshabilita Pausar y Reanudar y conserva el índice de la cola. Volver a reproducir el archivo lo inicia desde el principio.
+- Validación manual en Windows. Probar Detener mientras suena una canción y mientras está en pausa. Comprobar que el audio se corta, que el archivo se puede renombrar si ninguna otra aplicación lo usa y que la navegación parte del mismo índice.
+
 ## Plantilla para cada sprint
 
 ### Sprint

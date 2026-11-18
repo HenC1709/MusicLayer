@@ -48,6 +48,8 @@ Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ven
 
 Pulsa **Pausar** para interrumpir la canción actual y **Reanudar** para seguir desde la misma posición. **Reproducir seleccionada** inicia el archivo elegido desde el principio.
 
-El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows. La detención, el volumen y la barra de progreso siguen pendientes.
+**Detener** corta el audio y libera el archivo, incluso cuando está en pausa. La cola conserva la posición para seguir navegando con **Anterior** y **Siguiente**.
+
+El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows. El volumen y la barra de progreso siguen pendientes.
 
 Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio.

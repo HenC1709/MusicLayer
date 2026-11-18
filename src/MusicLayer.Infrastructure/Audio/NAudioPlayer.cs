@@ -61,6 +61,17 @@ public sealed class NAudioPlayer : IAudioPlayer
             }
         }, cancellationToken);
 
+    public Task StopAsync(CancellationToken cancellationToken = default)
+        => Task.Run(() =>
+        {
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                cancellationToken.ThrowIfCancellationRequested();
+                ReleaseAudio();
+            }
+        }, cancellationToken);
+
     private void OnStopped(object? sender, StoppedEventArgs e)
     {
         // Cleanup runs outside the audio callback; stale callbacks are ignored.

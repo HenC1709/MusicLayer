@@ -14,6 +14,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly PlaybackSession session;
     private readonly PausePlayback pause;
     private readonly ResumePlayback resume;
+    private readonly StopPlayback stop;
     private readonly SynchronizationContext context;
     private readonly CancellationTokenSource lifetime = new();
     private Task pending = Task.CompletedTask;
@@ -25,13 +26,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private string status = "Elige una carpeta con música.";
     private IReadOnlyList<Song> songs = [];
 
-    public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session, PausePlayback pause, ResumePlayback resume)
+    public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
+        PausePlayback pause, ResumePlayback resume, StopPlayback stop)
     {
         this.player = player;
         this.scanner = scanner;
         this.session = session;
         this.pause = pause;
         this.resume = resume;
+        this.stop = stop;
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
@@ -52,6 +55,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public bool IsReady => !busy && !closing;
     public bool CanPause => IsReady && audioState == AudioState.Playing;
     public bool CanResume => IsReady && audioState == AudioState.Paused;
+    public bool CanStop => IsReady && audioState != AudioState.Inactive;
 
     public Task LoadFolderAsync(string folder) => RunAsync(async () =>
     {
@@ -105,6 +109,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         });
     }
 
+    public Task StopAsync()
+    {
+        if (!CanStop) return Task.CompletedTask;
+
+        return RunAsync(async () =>
+        {
+            // The player detaches the active output even if resource cleanup fails.
+            audioState = AudioState.Inactive;
+            await stop.ExecuteAsync(lifetime.Token);
+            Status = "Reproducción detenida.";
+        });
+    }
+
     private async Task PlayAsync(Func<CancellationToken, Task<Song?>> start, string unavailable)
     {
         var version = completionVersion;
@@ -147,6 +164,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 audioState = AudioState.Inactive;
                 Notify(nameof(CanPause));
                 Notify(nameof(CanResume));
+                Notify(nameof(CanStop));
                 Status = e.Error is null ? "Reproducción finalizada." : $"Error de reproducción: {e.Error.Message}";
             }
         }, null);
@@ -167,6 +185,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Notify(nameof(IsReady));
         Notify(nameof(CanPause));
         Notify(nameof(CanResume));
+        Notify(nameof(CanStop));
     }
 
     private void Notify([CallerMemberName] string? name = null)

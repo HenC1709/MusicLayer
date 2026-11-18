@@ -39,6 +39,9 @@ public partial class MainWindow : Window
     private async void Resume(object sender, RoutedEventArgs e)
         => await viewModel.ResumeAsync();
 
+    private async void Stop(object sender, RoutedEventArgs e)
+        => await viewModel.StopAsync();
+
     protected override async void OnClosing(CancelEventArgs e)
     {
         if (canClose) { base.OnClosing(e); return; }
