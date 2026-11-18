@@ -8,6 +8,7 @@ public sealed class NAudioPlayer : IAudioPlayer
     private readonly object gate = new();
     private WaveOutEvent? output;
     private MediaFoundationReader? reader;
+    private float volume = IAudioPlayer.DefaultVolumePercent / 100f;
     private bool disposed;
     public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
 
@@ -25,6 +26,7 @@ public sealed class NAudioPlayer : IAudioPlayer
                     output = new WaveOutEvent();
                     output.PlaybackStopped += OnStopped;
                     output.Init(reader);
+                    output.Volume = volume;
                     output.Play();
                 }
                 catch { ReleaseAudio(); throw; }
@@ -69,6 +71,21 @@ public sealed class NAudioPlayer : IAudioPlayer
                 ObjectDisposedException.ThrowIf(disposed, this);
                 cancellationToken.ThrowIfCancellationRequested();
                 ReleaseAudio();
+            }
+        }, cancellationToken);
+
+    public Task SetVolumeAsync(int percent, CancellationToken cancellationToken = default)
+        => Task.Run(() =>
+        {
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                cancellationToken.ThrowIfCancellationRequested();
+                var newVolume = percent / 100f;
+                if (output is not null)
+                    output.Volume = newVolume;
+
+                volume = newVolume;
             }
         }, cancellationToken);
 

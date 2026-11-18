@@ -8,6 +8,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Button Content="Elegir carpeta" Click="ChooseFolder" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" Padding="14,7" />
         <ListBox Grid.Row="1" Margin="0,16" ItemsSource="{Binding Songs}" SelectedIndex="{Binding SelectedIndex}">
@@ -28,6 +29,20 @@
             <Button Content="Reanudar" Click="Resume" IsEnabled="{Binding CanResume}" Margin="8,0,0,0" Padding="14,7" />
             <Button Content="Detener" Click="Stop" IsEnabled="{Binding CanStop}" Margin="8,0,0,0" Padding="14,7" />
         </WrapPanel>
-        <TextBlock Grid.Row="3" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}" />
+        <Grid Grid.Row="3" Margin="0,12,0,0" IsEnabled="{Binding IsReady}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Volumen" VerticalAlignment="Center" />
+            <Slider Grid.Column="1" Margin="10,0" Minimum="0" Maximum="100"
+                    TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="10"
+                    AutomationProperties.Name="Volumen"
+                    Value="{Binding VolumePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Column="2" MinWidth="36" VerticalAlignment="Center" TextAlignment="Right"
+                       Text="{Binding VolumePercent, StringFormat={}{0}%}" />
+        </Grid>
+        <TextBlock Grid.Row="4" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}" />
     </Grid>
 </Window>

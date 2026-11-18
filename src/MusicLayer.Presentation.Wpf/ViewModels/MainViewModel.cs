@@ -15,19 +15,23 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly PausePlayback pause;
     private readonly ResumePlayback resume;
     private readonly StopPlayback stop;
+    private readonly SetPlaybackVolume setVolume;
     private readonly SynchronizationContext context;
     private readonly CancellationTokenSource lifetime = new();
     private Task pending = Task.CompletedTask;
+    private Task pendingVolume = Task.CompletedTask;
     private bool closing;
     private bool busy;
     private AudioState audioState;
     private int completionVersion;
     private int selectedIndex = -1;
+    private int volumePercent = IAudioPlayer.DefaultVolumePercent;
+    private int appliedVolumePercent = IAudioPlayer.DefaultVolumePercent;
     private string status = "Elige una carpeta con música.";
     private IReadOnlyList<Song> songs = [];
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
-        PausePlayback pause, ResumePlayback resume, StopPlayback stop)
+        PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume)
     {
         this.player = player;
         this.scanner = scanner;
@@ -35,6 +39,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.pause = pause;
         this.resume = resume;
         this.stop = stop;
+        this.setVolume = setVolume;
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
@@ -56,6 +61,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public bool CanPause => IsReady && audioState == AudioState.Playing;
     public bool CanResume => IsReady && audioState == AudioState.Paused;
     public bool CanStop => IsReady && audioState != AudioState.Inactive;
+
+    public int VolumePercent
+    {
+        get => volumePercent;
+        set
+        {
+            if (closing || volumePercent == value) return;
+            volumePercent = value;
+            Notify();
+            if (pendingVolume.IsCompleted)
+                pendingVolume = ApplyVolumeChangesAsync();
+        }
+    }
 
     public Task LoadFolderAsync(string folder) => RunAsync(async () =>
     {
@@ -124,6 +142,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     private async Task PlayAsync(Func<CancellationToken, Task<Song?>> start, string unavailable)
     {
+        await pendingVolume;
         var version = completionVersion;
         var song = await start(lifetime.Token);
         if (song is not null)
@@ -135,6 +154,28 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (song is not null)
                 audioState = AudioState.Playing;
             Status = song is null ? unavailable : $"Reproduciendo: {song.DisplayName}";
+        }
+    }
+
+    private async Task ApplyVolumeChangesAsync()
+    {
+        // Dragging can produce new values while the audio device handles the previous one.
+        while (!closing && appliedVolumePercent != volumePercent)
+        {
+            var requested = volumePercent;
+            try
+            {
+                await setVolume.ExecuteAsync(requested, lifetime.Token);
+                appliedVolumePercent = requested;
+            }
+            catch (OperationCanceledException) when (closing) { return; }
+            catch (Exception error)
+            {
+                if (volumePercent != requested) continue;
+                volumePercent = appliedVolumePercent;
+                Notify(nameof(VolumePercent));
+                Status = $"No se pudo ajustar el volumen: {error.Message}";
+            }
         }
     }
 
@@ -176,7 +217,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         NotifyControls();
         player.PlaybackEnded -= OnPlaybackEnded;
         lifetime.Cancel();
-        try { await pending; }
+        try { await Task.WhenAll(pending, pendingVolume); }
         finally { lifetime.Dispose(); }
     }
 
