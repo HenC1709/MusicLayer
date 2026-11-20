@@ -21,6 +21,51 @@ public sealed class MainViewModelTests
 
         Assert.Equal(2, vm.Songs.Count);
         Assert.Equal("2 canciones encontradas.", vm.Status);
+        Assert.Equal(NoticeKind.Imported, vm.Notice);
+    }
+
+    [Fact]
+    public async Task EmptyImportIsDistinctFromFirstLaunchAndScanInProgress()
+    {
+        var result = new TaskCompletionSource<IReadOnlyList<Song>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var scanner = new FakeScanner { Scan = _ => result.Task };
+        await using var vm = CreateViewModel(new FakePlayer(), scanner);
+        Assert.False(vm.HasImportedFolder);
+
+        var scan = vm.LoadFolderAsync("vacía");
+        Assert.Equal(NoticeKind.Importing, vm.Notice);
+        Assert.False(vm.IsReady);
+        result.SetResult([]);
+        await scan;
+
+        Assert.True(vm.HasImportedFolder);
+        Assert.True(vm.IsReady);
+        Assert.Empty(vm.Songs);
+        Assert.Equal("La carpeta no contiene audio compatible.", vm.Status);
+        Assert.False(vm.CanTogglePlayback);
+    }
+
+    [Fact]
+    public async Task FailedImportKeepsLibraryAndSelectionUntilAnotherImportSucceeds()
+    {
+        var song = new Song("primera.wav");
+        var scanner = new FakeScanner(song);
+        await using var vm = CreateViewModel(new FakePlayer(), scanner);
+        await vm.LoadFolderAsync("primera");
+        vm.SelectedIndex = 0;
+
+        scanner.Scan = _ => throw new UnauthorizedAccessException("acceso denegado");
+        await vm.LoadFolderAsync("protegida");
+        Assert.Equal(NoticeKind.FolderError, vm.Notice);
+        Assert.Same(song, Assert.Single(vm.Songs));
+        Assert.Equal(0, vm.SelectedIndex);
+
+        scanner.Scan = _ => Task.FromResult<IReadOnlyList<Song>>([new Song("nueva.wav")]);
+        await vm.LoadFolderAsync("otra");
+        Assert.Equal(NoticeKind.Imported, vm.Notice);
+        Assert.Equal("1 canción encontrada.", vm.Status);
+        Assert.Null(vm.StatusDetail);
+        Assert.Equal(-1, vm.SelectedIndex);
     }
 
     [Fact]
@@ -46,6 +91,45 @@ public sealed class MainViewModelTests
             await vm.PlayPreviousAsync();
             Assert.Equal(0, vm.SelectedIndex);
             Assert.Equal(3, player.PlayCount);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task SelectionAndFolderChangesDoNotReplaceTheActiveTrack()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path);
+            var other = new Song(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".mp3"));
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(song, song, other));
+            await vm.LoadFolderAsync("música");
+
+            Assert.False(vm.CanPrevious);
+            Assert.True(vm.CanTogglePlayback);
+            await vm.TogglePlaybackAsync();
+            await vm.PlayNextAsync();
+            vm.SelectedIndex = 2;
+            Assert.Equal(1, vm.CurrentSongIndex);
+            await vm.PlaySelectedAsync(); // The missing file fails before the active output is touched.
+            Assert.Equal(NoticeKind.PlaybackError, vm.Notice);
+            Assert.Contains(Path.GetFileName(other.FilePath), vm.Status);
+            Assert.Same(song, vm.CurrentSong);
+            Assert.Equal(1, vm.CurrentSongIndex);
+
+            await vm.TogglePlaybackAsync();
+            Assert.Equal("En pausa", vm.PlaybackLabel);
+            await vm.LoadFolderAsync("otra carpeta");
+            Assert.Same(song, vm.CurrentSong);
+            Assert.Equal(-1, vm.CurrentSongIndex);
+            await vm.TogglePlaybackAsync();
+            Assert.Equal(2, player.PlayCount);
+            Assert.Equal(1, player.ResumeCount);
+            player.Complete(new IOException("salida desconectada"));
+            Assert.Null(vm.CurrentSong);
+            Assert.Equal("Sin reproducción", vm.PlaybackLabel);
         }
         finally { File.Delete(path); }
     }
@@ -134,6 +218,8 @@ public sealed class MainViewModelTests
             await vm.StopAsync();
 
             Assert.Equal("Reproducción detenida.", vm.Status);
+            Assert.Null(vm.CurrentSong);
+            Assert.Equal(-1, vm.CurrentSongIndex);
             Assert.Equal(0, vm.SelectedIndex);
             Assert.False(vm.CanStop);
             Assert.False(vm.CanPause);
@@ -336,6 +422,8 @@ public sealed class MainViewModelTests
             }
 
             Assert.Equal("Reproducción finalizada.", vm.Status);
+            Assert.Null(vm.CurrentSong);
+            Assert.Equal(-1, vm.CurrentSongIndex);
             Assert.Equal("00:00", vm.ElapsedTimeText);
             Assert.Equal("--:--", vm.DurationText);
             Assert.Equal(0, vm.ProgressFraction);
@@ -353,7 +441,8 @@ public sealed class MainViewModelTests
         Assert.Equal("Reproducción finalizada.", vm.Status);
 
         player.Complete(new IOException("device failed"));
-        Assert.Contains("device failed", vm.Status);
+        Assert.Equal(NoticeKind.PlaybackError, vm.Notice);
+        Assert.Equal("device failed", vm.StatusDetail);
 
         await vm.DisposeAsync();
         var status = vm.Status;
@@ -380,14 +469,57 @@ public sealed class MainViewModelTests
         public override void Post(SendOrPostCallback callback, object? state) => callback(state);
     }
 
-    private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner)
+    [Fact]
+    public async Task CoverFollowsSelectionBeforePlayAndStaysWithTheActiveSong()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path);
+            var other = new Song("otra.flac");
+            var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/jPwPCfARkAAB7zAf+x9MCaAAAAAElFTkSuQmCC");
+            var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            await using var vm = CreateViewModel(new FakePlayer(), new FakeScanner(song, other),
+                new FakeCoverReader(file => file == path ? png : null));
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(vm.CoverImage) && vm.CoverImage is not null) loaded.TrySetResult();
+            };
+            await vm.LoadFolderAsync("musica");
+            vm.SelectedIndex = 0;
+            await loaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Null(vm.CurrentSong);
+            Assert.True(vm.CoverImage!.IsFrozen);
+            var preview = vm.CoverImage;
+            await vm.PlaySelectedAsync();
+            vm.SelectedIndex = 1;
+            await vm.PauseAsync();
+            Assert.Same(song, vm.CoverSong);
+            Assert.Same(preview, vm.CoverImage);
+            await vm.StopAsync();
+            Assert.Same(other, vm.CoverSong);
+            Assert.Null(vm.CoverImage);
+        }
+        finally { File.Delete(path); }
+    }
+
+    private sealed class FakeCoverReader(Func<string, byte[]?> read) : ICoverArtReader
+    {
+        public byte[]? ReadEmbeddedCover(string filePath) => read(filePath);
+    }
+
+    private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner, ICoverArtReader? covers = null)
         => new(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)),
-            new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player), new SetPlaybackVolume(player));
+            new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player), new SetPlaybackVolume(player),
+            covers ?? new FakeCoverReader(_ => null));
 
     private sealed class FakeScanner(params Song[] songs) : IMusicFileScanner
     {
+        public Func<string, Task<IReadOnlyList<Song>>> Scan { get; set; }
+            = _ => Task.FromResult<IReadOnlyList<Song>>(songs);
+
         public Task<IReadOnlyList<Song>> ScanAsync(string folder, CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<Song>>(songs);
+            => Scan(folder);
     }
 
     private sealed class FakePlayer : IAudioPlayer

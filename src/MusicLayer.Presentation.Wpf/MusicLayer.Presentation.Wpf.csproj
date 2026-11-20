@@ -5,6 +5,7 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Resources\Art\*.png" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <ProjectReference Include="..\MusicLayer.Application\MusicLayer.Application.csproj" />
     <ProjectReference Include="..\MusicLayer.Infrastructure\MusicLayer.Infrastructure.csproj" />

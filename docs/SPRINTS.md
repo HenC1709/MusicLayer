@@ -70,6 +70,23 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 - Mostrar tiempo transcurrido y duración en la ventana. El indicador consulta la posición de la salida de audio, se congela al pausar y se restablece al detener, finalizar o cambiar de canción.
 - Validación manual en Windows. Reproducir una canción conocida, comprobar los tiempos, pausar y esperar unos segundos, reanudar y luego pasar a un archivo de distinta duración. Al detener o dejar terminar la canción, comprobar que el tiempo vuelve a cero.
 
+### Tarea 2 — Biblioteca WPF y reproductor persistente
+
+- Las vistas **Canciones** y **Ahora suena** aplican los dos primeros diseños de `Guide/` a la biblioteca local y comparten una sesión y una barra de transporte. La ilustración es un recurso empaquetado con la aplicación.
+- La selección permite elegir qué reproducir con Enter, doble clic o **Reproducir selección**. Una marca independiente señala la posición activa, incluso cuando hay entradas duplicadas. Al importar otra carpeta se reemplaza la cola y la barra sigue mostrando la pista anterior hasta que termina o se cambia.
+- Para verificar en Windows, importar una carpeta con dos canciones, reproducir la primera y seleccionar la segunda con las flechas. Comprobar que el título y la marca siguen en la primera. Cambiar de vista, pausar, reanudar y detener desde la barra. Tras detener, la selección se conserva y se borra la marca.
+
+### Tarea 3 — Estados vacíos, importación y errores
+
+- La primera apertura invita a elegir una carpeta. Durante el escaneo se muestra la búsqueda de MP3, WAV y FLAC. Una importación termina con el número de canciones encontradas o con una indicación para elegir otra carpeta si no hay archivos compatibles.
+- Si falla la lectura de la carpeta seleccionada, se conservan la lista y la selección anteriores. Durante un fallo de reproducción, el aviso permite volver a la biblioteca y elegir otra canción. El detalle técnico del error está disponible al pasar el puntero sobre el mensaje.
+- Verificado en Windows con carpetas temporales, una carpeta ausente, un WAV dañado y otro válido. Se comprobó la recuperación desde **Ahora suena**, también con la ventana en su tamaño mínimo.
+
+### Adelanto del Sprint 4 — Carátula FLAC
+
+- TagLibSharp lee la portada frontal incrustada en el FLAC. Si no hay una imagen marcada como frontal, usa la primera imagen incrustada disponible.
+- La vista previa sigue la selección cuando el reproductor está detenido. Al reproducir o pausar, ambos tamaños de portada siguen la pista activa. La lectura se realiza bajo demanda y una imagen ausente o ilegible deja visible la ilustración incluida con MusicLayer.
+
 ## Plantilla para cada sprint
 
 ### Sprint

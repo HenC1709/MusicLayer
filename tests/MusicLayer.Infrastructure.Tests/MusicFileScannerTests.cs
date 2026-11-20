@@ -25,6 +25,15 @@ public sealed class MusicFileScannerTests : IDisposable
     }
 
     [Fact]
+    public async Task UnsupportedFolderIsEmptyAndMissingRootIsAnError()
+    {
+        File.WriteAllText(Path.Combine(folder, "notas.txt"), "texto");
+        var scanner = new MusicFileScanner();
+        Assert.Empty(await scanner.ScanAsync(folder));
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => scanner.ScanAsync(Path.Combine(folder, "ausente")));
+    }
+
+    [Fact]
     public async Task CancelledTokenStopsScan()
     {
         File.WriteAllText(Path.Combine(folder, "song.mp3"), "");

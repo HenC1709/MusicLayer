@@ -19,9 +19,10 @@ public sealed class NAudioPlayer : IAudioPlayer
             {
                 ObjectDisposedException.ThrowIf(disposed, this);
                 cancellationToken.ThrowIfCancellationRequested();
-                ReleaseAudio();
+                var replacingOutput = output is not null;
                 try
                 {
+                    ReleaseAudio();
                     reader = new MediaFoundationReader(filePath);
                     output = new WaveOutEvent();
                     output.PlaybackStopped += OnStopped;
@@ -29,7 +30,17 @@ public sealed class NAudioPlayer : IAudioPlayer
                     output.Volume = volume;
                     output.Play();
                 }
-                catch { ReleaseAudio(); throw; }
+                catch (Exception error)
+                {
+                    try { ReleaseAudio(); }
+                    finally
+                    {
+                        // The previous output was detached even if the new track could not start.
+                        if (replacingOutput)
+                            PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
+                    }
+                    throw;
+                }
             }
         }, cancellationToken);
 

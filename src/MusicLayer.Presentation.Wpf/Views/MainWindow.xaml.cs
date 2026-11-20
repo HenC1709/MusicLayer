@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using MusicLayer.Presentation.Wpf.ViewModels;
@@ -34,17 +36,39 @@ public partial class MainWindow : Window
     private async void PlaySelected(object sender, RoutedEventArgs e)
         => await viewModel.PlaySelectedAsync();
 
+    private void ChooseAnotherSong(object sender, RoutedEventArgs e)
+    {
+        Library.IsChecked = true;
+        SongList.Focus();
+        var index = Math.Max(0, SongList.SelectedIndex);
+        if (index >= SongList.Items.Count) return;
+        SongList.ScrollIntoView(SongList.Items[index]);
+        SongList.UpdateLayout();
+        (SongList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem)?.Focus();
+    }
+
     private async void PlayPrevious(object sender, RoutedEventArgs e)
         => await viewModel.PlayPreviousAsync();
 
     private async void PlayNext(object sender, RoutedEventArgs e)
         => await viewModel.PlayNextAsync();
 
-    private async void Pause(object sender, RoutedEventArgs e)
-        => await viewModel.PauseAsync();
+    private async void TogglePlayback(object sender, RoutedEventArgs e)
+        => await viewModel.TogglePlaybackAsync();
 
-    private async void Resume(object sender, RoutedEventArgs e)
-        => await viewModel.ResumeAsync();
+    private async void ActivateRow(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left && e.OriginalSource is DependencyObject source &&
+            ItemsControl.ContainerFromElement(SongList, source) is ListBoxItem)
+            await viewModel.PlaySelectedAsync();
+    }
+
+    private async void ActivateRowFromKeyboard(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || !viewModel.CanPlaySelected) return;
+        e.Handled = true;
+        await viewModel.PlaySelectedAsync();
+    }
 
     private async void Stop(object sender, RoutedEventArgs e)
         => await viewModel.StopAsync();

@@ -1,11 +1,15 @@
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows.Media.Imaging;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Library;
 using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Domain.Entities;
 
 namespace MusicLayer.Presentation.Wpf.ViewModels;
+
+public enum NoticeKind { Information, Importing, Imported, FolderError, PlaybackError, Error }
 
 public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
@@ -16,11 +20,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly ResumePlayback resume;
     private readonly StopPlayback stop;
     private readonly SetPlaybackVolume setVolume;
+    private readonly ICoverArtReader coverReader;
     private readonly SynchronizationContext context;
     private readonly CancellationTokenSource lifetime = new();
     private Task pending = Task.CompletedTask;
     private Task pendingVolume = Task.CompletedTask;
     private Task pendingProgress = Task.CompletedTask;
+    private Task pendingCover = Task.CompletedTask;
+    private string? coverPath;
     private bool closing;
     private bool busy;
     private bool changingPlayback;
@@ -31,11 +38,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private int selectedIndex = -1;
     private int volumePercent = IAudioPlayer.DefaultVolumePercent;
     private int appliedVolumePercent = IAudioPlayer.DefaultVolumePercent;
-    private string status = "Elige una carpeta con música.";
     private IReadOnlyList<Song> songs = [];
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
-        PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume)
+        PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader)
     {
         this.player = player;
         this.scanner = scanner;
@@ -44,6 +50,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.resume = resume;
         this.stop = stop;
         this.setVolume = setVolume;
+        this.coverReader = coverReader;
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
@@ -57,11 +64,43 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (selectedIndex == value) return;
             selectedIndex = value;
             Notify();
+            RefreshCover();
+            Notify(nameof(CanPlaySelected));
+            Notify(nameof(CanTogglePlayback));
         }
     }
     public IReadOnlyList<Song> Songs { get => songs; private set { songs = value; Notify(); } }
-    public string Status { get => status; private set { status = value; Notify(); } }
+    public string Status { get; private set; } = "Elige una carpeta con música.";
+    public string? StatusDetail { get; private set; }
+    public NoticeKind Notice { get; private set; }
+    public bool HasImportedFolder { get; private set; }
     public bool IsReady => !busy && !closing;
+    public Song? CurrentSong
+    {
+        get;
+        private set { field = value; RefreshCover(); }
+    }
+    public Song? CoverSong => CurrentSong ?? (SelectedIndex >= 0 && SelectedIndex < Songs.Count ? Songs[SelectedIndex] : null);
+    public string CoverLabel => CurrentSong is null && CoverSong is not null ? "Selección" : PlaybackLabel;
+    public BitmapSource? CoverImage { get; private set; }
+    public int CurrentSongIndex => CurrentSong is null ? -1 : session.CurrentIndex ?? -1;
+    public bool CanPlaySelected => IsReady && SelectedIndex >= 0 && SelectedIndex < Songs.Count;
+    public bool CanTogglePlayback => CanStop || CanPlaySelected || CanNext;
+    public bool CanNext => IsReady && session.HasNext;
+    public bool CanPrevious => IsReady && session.HasPrevious;
+    public bool IsPlaying => audioState == AudioState.Playing;
+    public string PlaybackLabel => audioState switch
+    {
+        AudioState.Playing => "En reproducción",
+        AudioState.Paused => "En pausa",
+        _ => "Sin reproducción"
+    };
+    public string TransportLabel => audioState switch
+    {
+        AudioState.Playing => "Pausar",
+        AudioState.Paused => "Reanudar",
+        _ => "Reproducir"
+    };
     public bool CanPause => IsReady && audioState == AudioState.Playing;
     public bool CanResume => IsReady && audioState == AudioState.Paused;
     public bool CanStop => IsReady && audioState != AudioState.Inactive;
@@ -86,22 +125,44 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public Task LoadFolderAsync(string folder) => RunAsync(async () =>
     {
-        var scannedSongs = await scanner.ExecuteAsync(folder, lifetime.Token);
-        await session.ReplaceQueueAsync(scannedSongs, lifetime.Token);
+        ShowStatus("Buscando archivos MP3, WAV y FLAC…", NoticeKind.Importing);
+        IReadOnlyList<Song> scannedSongs;
+        try
+        {
+            scannedSongs = await scanner.ExecuteAsync(folder, lifetime.Token);
+            await session.ReplaceQueueAsync(scannedSongs, lifetime.Token);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            ShowStatus("No se pudo leer la carpeta. Comprueba el acceso o elige otra.", NoticeKind.FolderError, error.Message);
+            return;
+        }
+        HasImportedFolder = true;
+        Notify(nameof(HasImportedFolder));
         Songs = scannedSongs;
         SelectedIndex = -1;
-        Status = Songs.Count == 0 ? "La carpeta no contiene audio compatible." : $"{Songs.Count} canciones encontradas.";
+        if (Songs.Count == 0)
+            ShowStatus("La carpeta no contiene audio compatible.");
+        else
+            ShowStatus(Songs.Count == 1 ? "1 canción encontrada." : $"{Songs.Count} canciones encontradas.", NoticeKind.Imported);
     });
 
     public Task PlaySelectedAsync() => RunTransportAsync(async () =>
     {
         var index = SelectedIndex;
-        if (index < 0 || index >= Songs.Count) { Status = "Selecciona una canción."; return; }
+        if (index < 0 || index >= Songs.Count) { ShowStatus("Selecciona una canción."); return; }
         await PlayAsync(token => session.PlayAtAsync(index, token), "Selecciona una canción.");
     });
 
     public Task PlayNextAsync() => RunTransportAsync(() =>
         PlayAsync(session.PlayNextAsync, "No hay una canción siguiente."));
+
+    public Task TogglePlaybackAsync() => audioState switch
+    {
+        AudioState.Playing => PauseAsync(),
+        AudioState.Paused => ResumeAsync(),
+        _ => CanPlaySelected ? PlaySelectedAsync() : PlayNextAsync()
+    };
 
     public Task PlayPreviousAsync() => RunTransportAsync(() =>
         PlayAsync(session.PlayPreviousAsync, "No hay una canción anterior."));
@@ -117,7 +178,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (version != completionVersion) return;
 
             audioState = paused ? AudioState.Paused : AudioState.Inactive;
-            Status = paused ? "Reproducción pausada." : "No hay audio en reproducción.";
+            if (!paused) CurrentSong = null;
+            ShowStatus(paused ? "Reproducción pausada." : "No hay audio en reproducción.");
             if (paused)
                 await ReadProgressAsync();
             else
@@ -136,7 +198,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (version != completionVersion) return;
 
             audioState = resumed ? AudioState.Playing : AudioState.Inactive;
-            Status = resumed ? "Reproducción reanudada." : "No hay audio en pausa.";
+            if (!resumed) CurrentSong = null;
+            ShowStatus(resumed ? "Reproducción reanudada." : "No hay audio en pausa.");
             if (!resumed)
                 SetProgress(null);
         });
@@ -150,9 +213,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         {
             // The player detaches the active output even if resource cleanup fails.
             audioState = AudioState.Inactive;
+            CurrentSong = null;
             SetProgress(null);
             await stop.ExecuteAsync(lifetime.Token);
-            Status = "Reproducción detenida.";
+            ShowStatus("Reproducción detenida.");
         });
     }
 
@@ -162,11 +226,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         var version = completionVersion;
         Song? song;
         try { song = await start(lifetime.Token); }
-        catch
+        catch (Exception error) when (error is not OperationCanceledException)
         {
             // A rejected selection can leave the previous track active. Check the actual output.
             await ReadProgressAsync();
-            throw;
+            var message = error is FileNotFoundException { FileName: { } path }
+                ? $"No se encontró «{Path.GetFileName(path)}». Comprueba si el archivo se movió."
+                : "No se pudo reproducir el archivo. Prueba con otra canción o revisa la salida de audio.";
+            ShowStatus(message, NoticeKind.PlaybackError, error.Message);
+            return;
         }
 
         if (song is not null)
@@ -178,9 +246,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (song is not null)
             {
                 audioState = AudioState.Playing;
+                CurrentSong = song;
                 SetProgress(null);
             }
-            Status = song is null ? unavailable : $"Reproduciendo: {song.DisplayName}";
+            ShowStatus(song is null ? unavailable : $"Reproduciendo: {song.DisplayName}");
             if (song is not null)
                 await ReadProgressAsync();
         }
@@ -193,6 +262,49 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
         pendingProgress = ReadProgressAsync();
         return pendingProgress;
+    }
+
+    private void RefreshCover()
+    {
+        Notify(nameof(CoverSong));
+        Notify(nameof(CoverLabel));
+        var path = CoverSong?.FilePath;
+        if (closing || path == coverPath) return;
+        coverPath = path;
+        CoverImage = null;
+        Notify(nameof(CoverImage));
+        if (pendingCover.IsCompleted)
+            pendingCover = LoadCoverAsync();
+    }
+
+    private async Task LoadCoverAsync()
+    {
+        // Keep at most one read in flight while the user moves through the list.
+        while (!closing && coverPath is { } path)
+        {
+            BitmapSource? image;
+            try { image = await Task.Run(() => DecodeCover(coverReader.ReadEmbeddedCover(path)), lifetime.Token); }
+            catch (Exception) { image = null; } // Unreadable tags or images use the packaged artwork.
+            if (closing) return;
+            if (path != coverPath) continue;
+            CoverImage = image;
+            Notify(nameof(CoverImage));
+            return;
+        }
+    }
+
+    private static BitmapSource? DecodeCover(byte[]? bytes)
+    {
+        if (bytes is not { Length: > 0 }) return null;
+        using var stream = new MemoryStream(bytes, writable: false);
+        var image = new BitmapImage();
+        image.BeginInit();
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        image.DecodePixelWidth = 640;
+        image.StreamSource = stream;
+        image.EndInit();
+        image.Freeze();
+        return image;
     }
 
     private async Task ReadProgressAsync()
@@ -243,7 +355,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 if (volumePercent != requested) continue;
                 volumePercent = appliedVolumePercent;
                 Notify(nameof(VolumePercent));
-                Status = $"No se pudo ajustar el volumen: {error.Message}";
+                ShowStatus($"No se pudo ajustar el volumen: {error.Message}", NoticeKind.Error);
             }
         }
     }
@@ -269,7 +381,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         NotifyControls();
         try { await action(); }
         catch (OperationCanceledException) when (closing) { }
-        catch (Exception error) { Status = $"No se pudo completar la operación: {error.Message}"; }
+        catch (Exception error) { ShowStatus($"No se pudo completar la operación: {error.Message}", NoticeKind.Error); }
         finally { busy = false; NotifyControls(); }
     }
 
@@ -281,11 +393,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 completionVersion++;
                 progressVersion++;
                 audioState = AudioState.Inactive;
+                CurrentSong = null;
                 SetProgress(null);
-                Notify(nameof(CanPause));
-                Notify(nameof(CanResume));
-                Notify(nameof(CanStop));
-                Status = e.Error is null ? "Reproducción finalizada." : $"Error de reproducción: {e.Error.Message}";
+                NotifyControls();
+                if (e.Error is not null)
+                    ShowStatus("Se interrumpió la reproducción. Prueba con otra canción o revisa la salida de audio.",
+                        NoticeKind.PlaybackError, e.Error.Message);
+                else if (Notice is not (NoticeKind.Importing or NoticeKind.FolderError or NoticeKind.PlaybackError))
+                    ShowStatus("Reproducción finalizada.");
             }
         }, null);
 
@@ -296,13 +411,33 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         NotifyControls();
         player.PlaybackEnded -= OnPlaybackEnded;
         lifetime.Cancel();
-        try { await Task.WhenAll(pending, pendingVolume, pendingProgress); }
+        try { await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover); }
         finally { lifetime.Dispose(); }
+    }
+
+    private void ShowStatus(string message, NoticeKind kind = NoticeKind.Information, string? detail = null)
+    {
+        Status = message;
+        Notice = kind;
+        StatusDetail = detail;
+        Notify(nameof(Status));
+        Notify(nameof(Notice));
+        Notify(nameof(StatusDetail));
     }
 
     private void NotifyControls()
     {
         Notify(nameof(IsReady));
+        Notify(nameof(CurrentSong));
+        Notify(nameof(CurrentSongIndex));
+        Notify(nameof(PlaybackLabel));
+        Notify(nameof(CoverLabel));
+        Notify(nameof(IsPlaying));
+        Notify(nameof(TransportLabel));
+        Notify(nameof(CanPlaySelected));
+        Notify(nameof(CanTogglePlayback));
+        Notify(nameof(CanNext));
+        Notify(nameof(CanPrevious));
         Notify(nameof(CanPause));
         Notify(nameof(CanResume));
         Notify(nameof(CanStop));
