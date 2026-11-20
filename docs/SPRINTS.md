@@ -82,10 +82,39 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 - Si falla la lectura de la carpeta seleccionada, se conservan la lista y la selección anteriores. Durante un fallo de reproducción, el aviso permite volver a la biblioteca y elegir otra canción. El detalle técnico del error está disponible al pasar el puntero sobre el mensaje.
 - Verificado en Windows con carpetas temporales, una carpeta ausente, un WAV dañado y otro válido. Se comprobó la recuperación desde **Ahora suena**, también con la ventana en su tamaño mínimo.
 
-### Adelanto del Sprint 4 — Carátula FLAC
+### Tarea 4 — Carátula FLAC · Completada
 
 - TagLibSharp lee la portada frontal incrustada en el FLAC. Si no hay una imagen marcada como frontal, usa la primera imagen incrustada disponible.
 - La vista previa sigue la selección cuando el reproductor está detenido. Al reproducir o pausar, ambos tamaños de portada siguen la pista activa. La lectura se realiza bajo demanda y una imagen ausente o ilegible deja visible la ilustración incluida con MusicLayer.
+
+## Sprint 4 — Pulido y entrega
+
+Dejar MusicLayer listo para portafolio con metadatos locales, preferencias que se recuperan al abrir la app y un README que permita ejecutar el proyecto desde un clon limpio.
+
+### Tarea 1 — Título, artista y álbum
+
+- Reutilizar TagLibSharp para leer las etiquetas de texto de MP3, WAV y FLAC. Mostrar el título en la biblioteca y los datos disponibles en **Ahora suena**.
+- Criterio de aceptación. Un archivo etiquetado muestra sus datos. Si falta el título o falla la lectura de etiquetas, la canción se puede reproducir y la aplicación muestra el nombre del archivo.
+
+### Tarea 2 — Carátulas en los demás formatos
+
+- Extender el lector de carátulas a MP3 y a los WAV que incluyan imágenes incrustadas legibles por TagLibSharp.
+- Criterio de aceptación. La carátula aparece al seleccionar o reproducir una pista. FLAC sigue funcionando y las pistas sin una imagen legible muestran la ilustración de MusicLayer.
+
+### Tarea 3 — Repositorio de preferencias en SQLite
+
+- Definir un contrato en Application e implementar en Infrastructure el almacenamiento de la última carpeta importada con éxito y del volumen. Crear la base bajo `%LocalAppData%\MusicLayer` al primer uso.
+- Criterio de aceptación. Guardar y volver a leer las preferencias con una segunda instancia del repositorio. Comprobar que una base recién creada proporciona los valores iniciales.
+
+### Tarea 4 — Restaurar las preferencias al abrir MusicLayer
+
+- Conectar el repositorio al arranque y a las acciones de importar y ajustar volumen. Al abrir la aplicación, recuperar el volumen y volver a escanear la última carpeta guardada.
+- Criterio de aceptación. Tras reiniciar, se recuperan la biblioteca y el volumen guardados. La reproducción queda detenida. Si la carpeta se movió, aparece un aviso y se puede elegir otra.
+
+### Tarea 5 — Revisión final y README de portafolio
+
+- Validar importación y reproducción de MP3, WAV y FLAC en Windows, junto con la recuperación de preferencias. Añadir capturas actuales, un diagrama de capas y las instrucciones de compilación y ejecución al README.
+- Criterio de aceptación. Desde un clon limpio se puede compilar, ejecutar las pruebas y abrir MusicLayer siguiendo el README.
 
 ## Plantilla para cada sprint
 
@@ -100,4 +129,4 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 
 ## Dirección inicial
 
-El plan original propone primero escaneo y reproducción, después controles y cola, luego interfaz WPF y finalmente metadatos y persistencia. Los detalles se definirán antes de iniciar cada sprint. Para el MVP se mostrará el nombre del archivo; SQLite se abordará en el Sprint 4.
+El plan original propone primero escaneo y reproducción, después controles y cola, luego interfaz WPF y finalmente metadatos y persistencia. La biblioteca se construye en memoria a partir de la carpeta elegida. SQLite guardará las preferencias locales del Sprint 4.
