@@ -52,6 +52,8 @@ Pulsa **Pausar** para interrumpir la canción actual y **Reanudar** para seguir 
 
 Usa **Volumen** para ajustar el sonido de 0 a 100 antes o durante la reproducción. **0** silencia el audio sin detenerlo. El ajuste se mantiene al pausar, reanudar, detener o cambiar de canción. Al volver a abrir MusicLayer, el deslizador empieza en 100. Guardar esta preferencia queda para el Sprint 4.
 
-El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows. La barra de progreso sigue pendiente.
+La **barra de progreso** muestra el tiempo transcurrido y la duración de la canción. Al pausar, el tiempo queda fijo hasta reanudar. La barra vuelve a cero al detener o finalizar, y se actualiza para cada canción nueva. Por ahora, solo muestra la posición.
+
+El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows.
 
 Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio.

@@ -9,6 +9,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <Button Content="Elegir carpeta" Click="ChooseFolder" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" Padding="14,7" />
         <ListBox Grid.Row="1" Margin="0,16" ItemsSource="{Binding Songs}" SelectedIndex="{Binding SelectedIndex}">
@@ -43,6 +44,18 @@
             <TextBlock Grid.Column="2" MinWidth="36" VerticalAlignment="Center" TextAlignment="Right"
                        Text="{Binding VolumePercent, StringFormat={}{0}%}" />
         </Grid>
-        <TextBlock Grid.Row="4" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}" />
+        <Grid Grid.Row="4" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding ElapsedTimeText}" VerticalAlignment="Center" />
+            <ProgressBar Grid.Column="1" Height="6" Margin="10,0" Minimum="0" Maximum="1"
+                         Foreground="#39B779" AutomationProperties.Name="Progreso de reproducción"
+                         Value="{Binding ProgressFraction, Mode=OneWay}" />
+            <TextBlock Grid.Column="2" Text="{Binding DurationText}" VerticalAlignment="Center" />
+        </Grid>
+        <TextBlock Grid.Row="5" Margin="0,12,0,0" TextWrapping="Wrap" Text="{Binding Status}" />
     </Grid>
 </Window>

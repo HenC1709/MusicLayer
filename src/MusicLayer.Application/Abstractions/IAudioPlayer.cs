@@ -10,7 +10,10 @@ public interface IAudioPlayer : IAsyncDisposable
     Task<bool> ResumeAsync(CancellationToken cancellationToken = default);
     Task StopAsync(CancellationToken cancellationToken = default);
     Task SetVolumeAsync(int percent, CancellationToken cancellationToken = default);
+    Task<PlaybackProgress?> GetProgressAsync(CancellationToken cancellationToken = default);
 }
+
+public readonly record struct PlaybackProgress(TimeSpan Elapsed, TimeSpan Duration);
 
 public sealed class PlaybackEndedEventArgs(Exception? error) : EventArgs
 {

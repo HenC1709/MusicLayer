@@ -238,6 +238,112 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task ProgressAdvancesWithOutputAndFreezesWhilePaused()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var duration = TimeSpan.FromMinutes(2);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, duration) };
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path)));
+            await vm.LoadFolderAsync("cualquier-carpeta");
+            await vm.PlayNextAsync();
+            Assert.Equal("02:00", vm.DurationText);
+
+            player.Progress = new(TimeSpan.FromSeconds(29), duration);
+            await vm.RefreshPlaybackProgressAsync();
+            Assert.Equal("00:29", vm.ElapsedTimeText);
+
+            player.Progress = new(TimeSpan.FromSeconds(30), duration);
+            await vm.PauseAsync();
+            Assert.Equal("00:30", vm.ElapsedTimeText);
+            Assert.Equal(0.25, vm.ProgressFraction);
+
+            player.Progress = new(TimeSpan.FromSeconds(60), duration);
+            await vm.RefreshPlaybackProgressAsync();
+            Assert.Equal("00:30", vm.ElapsedTimeText);
+
+            await vm.ResumeAsync();
+            await vm.RefreshPlaybackProgressAsync();
+            Assert.Equal("01:00", vm.ElapsedTimeText);
+            Assert.Equal(0.5, vm.ProgressFraction);
+
+            await vm.StopAsync();
+            Assert.Equal("00:00", vm.ElapsedTimeText);
+            Assert.Equal("--:--", vm.DurationText);
+            Assert.Equal(0, vm.ProgressFraction);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ChangingTrackDiscardsThePreviousTrackReadingInFlight()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var previousDuration = TimeSpan.FromMinutes(2);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, previousDuration) };
+            var track = new Song(path);
+            await using var vm = CreateViewModel(player, new FakeScanner(track, track));
+            await vm.LoadFolderAsync("cualquier-carpeta");
+            await vm.PlayNextAsync();
+
+            var oldReading = new TaskCompletionSource<PlaybackProgress?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            player.ReadProgress = _ => oldReading.Task;
+            var refresh = vm.RefreshPlaybackProgressAsync();
+            try
+            {
+                player.ReadProgress = null;
+                player.Progress = new(TimeSpan.Zero, TimeSpan.FromMinutes(3));
+                await vm.PlayNextAsync();
+            }
+            finally
+            {
+                oldReading.SetResult(new PlaybackProgress(TimeSpan.FromMinutes(1), previousDuration));
+                await refresh;
+            }
+
+            Assert.Equal(1, vm.SelectedIndex);
+            Assert.Equal("03:00", vm.DurationText);
+            Assert.Equal("00:00", vm.ElapsedTimeText);
+            Assert.Equal(0, vm.ProgressFraction);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task NaturalCompletionResetsProgressAndIgnoresAnOutstandingReading()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var duration = TimeSpan.FromMinutes(1);
+            var player = new FakePlayer { Progress = new(TimeSpan.FromSeconds(50), duration) };
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(new Song(path)));
+            await vm.LoadFolderAsync("cualquier-carpeta");
+            await vm.PlayNextAsync();
+            Assert.Equal("00:50", vm.ElapsedTimeText);
+
+            var finalReading = new TaskCompletionSource<PlaybackProgress?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            player.ReadProgress = _ => finalReading.Task;
+            var refresh = vm.RefreshPlaybackProgressAsync();
+            try { player.Complete(); }
+            finally
+            {
+                finalReading.SetResult(new PlaybackProgress(duration, duration));
+                await refresh;
+            }
+
+            Assert.Equal("Reproducción finalizada.", vm.Status);
+            Assert.Equal("00:00", vm.ElapsedTimeText);
+            Assert.Equal("--:--", vm.DurationText);
+            Assert.Equal(0, vm.ProgressFraction);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public async Task CompletionUpdatesViewModelAndDisposalUnsubscribes()
     {
         var player = new FakePlayer();
@@ -258,13 +364,13 @@ public sealed class MainViewModelTests
     }
 
     // El ViewModel captura el SynchronizationContext al crearse; aquí se ejecuta en línea.
-    private static MainViewModel CreateOnImmediateContext(FakePlayer player)
+    private static MainViewModel CreateOnImmediateContext(FakePlayer player, FakeScanner? scanner = null)
     {
         var previous = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(new ImmediateContext());
         try
         {
-            return CreateViewModel(player, new FakeScanner());
+            return CreateViewModel(player, scanner ?? new FakeScanner());
         }
         finally { SynchronizationContext.SetSynchronizationContext(previous); }
     }
@@ -294,6 +400,8 @@ public sealed class MainViewModelTests
         public List<int> VolumeRequests { get; } = [];
         public List<int> VolumesAtStart { get; } = [];
         public Func<int, Task> ApplyVolume { get; init; } = _ => Task.CompletedTask;
+        public PlaybackProgress? Progress { get; set; }
+        public Func<CancellationToken, Task<PlaybackProgress?>>? ReadProgress { get; set; }
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
         public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
         {
@@ -326,6 +434,9 @@ public sealed class MainViewModelTests
             await ApplyVolume(percent);
             VolumePercent = percent;
         }
+
+        public Task<PlaybackProgress?> GetProgressAsync(CancellationToken cancellationToken = default)
+            => ReadProgress?.Invoke(cancellationToken) ?? Task.FromResult(Progress);
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

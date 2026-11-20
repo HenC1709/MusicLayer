@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using MusicLayer.Presentation.Wpf.ViewModels;
 
@@ -8,6 +9,10 @@ namespace MusicLayer.Presentation.Wpf.Views;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel viewModel;
+    private readonly DispatcherTimer progressTimer = new(DispatcherPriority.Background)
+    {
+        Interval = TimeSpan.FromMilliseconds(250)
+    };
     private bool closing;
     private bool canClose;
 
@@ -16,6 +21,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         this.viewModel = viewModel;
         DataContext = viewModel;
+        progressTimer.Tick += RefreshPlaybackProgress;
+        progressTimer.Start();
     }
 
     private async void ChooseFolder(object sender, RoutedEventArgs e)
@@ -42,6 +49,9 @@ public partial class MainWindow : Window
     private async void Stop(object sender, RoutedEventArgs e)
         => await viewModel.StopAsync();
 
+    private async void RefreshPlaybackProgress(object? sender, EventArgs e)
+        => await viewModel.RefreshPlaybackProgressAsync();
+
     protected override async void OnClosing(CancelEventArgs e)
     {
         if (canClose) { base.OnClosing(e); return; }
@@ -49,6 +59,8 @@ public partial class MainWindow : Window
         base.OnClosing(e);
         if (closing) return;
         closing = true;
+        progressTimer.Stop();
+        progressTimer.Tick -= RefreshPlaybackProgress;
         try
         {
             try { await viewModel.DisposeAsync(); }

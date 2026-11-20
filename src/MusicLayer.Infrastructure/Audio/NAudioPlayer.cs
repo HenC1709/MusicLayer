@@ -89,6 +89,27 @@ public sealed class NAudioPlayer : IAudioPlayer
             }
         }, cancellationToken);
 
+    public Task<PlaybackProgress?> GetProgressAsync(CancellationToken cancellationToken = default)
+        => Task.Run<PlaybackProgress?>(() =>
+        {
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (reader is null || output is not { PlaybackState: not PlaybackState.Stopped } activeOutput)
+                    return null;
+
+                var duration = reader.TotalTime;
+                if (duration <= TimeSpan.Zero)
+                    return null;
+
+                // The reader fills buffers ahead of the output. Use the device's played bytes.
+                var seconds = (double)activeOutput.GetPosition() / activeOutput.OutputWaveFormat.AverageBytesPerSecond;
+                var elapsed = TimeSpan.FromSeconds(Math.Clamp(seconds, 0, duration.TotalSeconds));
+                return new PlaybackProgress(elapsed, duration);
+            }
+        }, cancellationToken);
+
     private void OnStopped(object? sender, StoppedEventArgs e)
     {
         // Cleanup runs outside the audio callback; stale callbacks are ignored.

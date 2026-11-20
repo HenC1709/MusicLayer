@@ -20,10 +20,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly CancellationTokenSource lifetime = new();
     private Task pending = Task.CompletedTask;
     private Task pendingVolume = Task.CompletedTask;
+    private Task pendingProgress = Task.CompletedTask;
     private bool closing;
     private bool busy;
+    private bool changingPlayback;
     private AudioState audioState;
     private int completionVersion;
+    private int progressVersion;
+    private PlaybackProgress? progress;
     private int selectedIndex = -1;
     private int volumePercent = IAudioPlayer.DefaultVolumePercent;
     private int appliedVolumePercent = IAudioPlayer.DefaultVolumePercent;
@@ -61,6 +65,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public bool CanPause => IsReady && audioState == AudioState.Playing;
     public bool CanResume => IsReady && audioState == AudioState.Paused;
     public bool CanStop => IsReady && audioState != AudioState.Inactive;
+    public double ProgressFraction => progress is { } value
+        ? value.Elapsed.TotalSeconds / value.Duration.TotalSeconds
+        : 0;
+    public string ElapsedTimeText => FormatPlaybackTime(progress?.Elapsed ?? TimeSpan.Zero);
+    public string DurationText => progress is { } value ? FormatPlaybackTime(value.Duration) : "--:--";
 
     public int VolumePercent
     {
@@ -84,24 +93,24 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Status = Songs.Count == 0 ? "La carpeta no contiene audio compatible." : $"{Songs.Count} canciones encontradas.";
     });
 
-    public Task PlaySelectedAsync() => RunAsync(async () =>
+    public Task PlaySelectedAsync() => RunTransportAsync(async () =>
     {
         var index = SelectedIndex;
         if (index < 0 || index >= Songs.Count) { Status = "Selecciona una canción."; return; }
         await PlayAsync(token => session.PlayAtAsync(index, token), "Selecciona una canción.");
     });
 
-    public Task PlayNextAsync() => RunAsync(() =>
+    public Task PlayNextAsync() => RunTransportAsync(() =>
         PlayAsync(session.PlayNextAsync, "No hay una canción siguiente."));
 
-    public Task PlayPreviousAsync() => RunAsync(() =>
+    public Task PlayPreviousAsync() => RunTransportAsync(() =>
         PlayAsync(session.PlayPreviousAsync, "No hay una canción anterior."));
 
     public Task PauseAsync()
     {
         if (!CanPause) return Task.CompletedTask;
 
-        return RunAsync(async () =>
+        return RunTransportAsync(async () =>
         {
             var version = completionVersion;
             var paused = await pause.ExecuteAsync(lifetime.Token);
@@ -109,6 +118,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
             audioState = paused ? AudioState.Paused : AudioState.Inactive;
             Status = paused ? "Reproducción pausada." : "No hay audio en reproducción.";
+            if (paused)
+                await ReadProgressAsync();
+            else
+                SetProgress(null);
         });
     }
 
@@ -116,7 +129,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         if (!CanResume) return Task.CompletedTask;
 
-        return RunAsync(async () =>
+        return RunTransportAsync(async () =>
         {
             var version = completionVersion;
             var resumed = await resume.ExecuteAsync(lifetime.Token);
@@ -124,6 +137,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
             audioState = resumed ? AudioState.Playing : AudioState.Inactive;
             Status = resumed ? "Reproducción reanudada." : "No hay audio en pausa.";
+            if (!resumed)
+                SetProgress(null);
         });
     }
 
@@ -131,10 +146,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         if (!CanStop) return Task.CompletedTask;
 
-        return RunAsync(async () =>
+        return RunTransportAsync(async () =>
         {
             // The player detaches the active output even if resource cleanup fails.
             audioState = AudioState.Inactive;
+            SetProgress(null);
             await stop.ExecuteAsync(lifetime.Token);
             Status = "Reproducción detenida.";
         });
@@ -144,7 +160,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         await pendingVolume;
         var version = completionVersion;
-        var song = await start(lifetime.Token);
+        Song? song;
+        try { song = await start(lifetime.Token); }
+        catch
+        {
+            // A rejected selection can leave the previous track active. Check the actual output.
+            await ReadProgressAsync();
+            throw;
+        }
+
         if (song is not null)
             SelectedIndex = session.CurrentIndex ?? -1;
 
@@ -152,10 +176,55 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         if (version == completionVersion)
         {
             if (song is not null)
+            {
                 audioState = AudioState.Playing;
+                SetProgress(null);
+            }
             Status = song is null ? unavailable : $"Reproduciendo: {song.DisplayName}";
+            if (song is not null)
+                await ReadProgressAsync();
         }
     }
+
+    public Task RefreshPlaybackProgressAsync()
+    {
+        if (closing || changingPlayback || audioState != AudioState.Playing || !pendingProgress.IsCompleted)
+            return Task.CompletedTask;
+
+        pendingProgress = ReadProgressAsync();
+        return pendingProgress;
+    }
+
+    private async Task ReadProgressAsync()
+    {
+        if (closing) return;
+
+        var version = progressVersion;
+        PlaybackProgress? snapshot;
+        try { snapshot = await player.GetProgressAsync(lifetime.Token); }
+        catch (Exception)
+        {
+            // Position is optional. A failed query should not interrupt playback.
+            snapshot = null;
+        }
+
+        if (!closing && version == progressVersion)
+            SetProgress(snapshot);
+    }
+
+    private void SetProgress(PlaybackProgress? value)
+    {
+        if (progress == value) return;
+
+        progress = value;
+        Notify(nameof(ProgressFraction));
+        Notify(nameof(ElapsedTimeText));
+        Notify(nameof(DurationText));
+    }
+
+    private static string FormatPlaybackTime(TimeSpan time) => time.TotalHours < 1
+        ? time.ToString(@"mm\:ss")
+        : FormattableString.Invariant($@"{(long)time.TotalHours}:{time:mm\:ss}");
 
     private async Task ApplyVolumeChangesAsync()
     {
@@ -186,6 +255,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         return pending;
     }
 
+    private Task RunTransportAsync(Func<Task> action) => RunAsync(async () =>
+    {
+        changingPlayback = true;
+        progressVersion++;
+        try { await action(); }
+        finally { changingPlayback = false; }
+    });
+
     private async Task RunCoreAsync(Func<Task> action)
     {
         busy = true;
@@ -202,7 +279,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (!closing)
             {
                 completionVersion++;
+                progressVersion++;
                 audioState = AudioState.Inactive;
+                SetProgress(null);
                 Notify(nameof(CanPause));
                 Notify(nameof(CanResume));
                 Notify(nameof(CanStop));
@@ -217,7 +296,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         NotifyControls();
         player.PlaybackEnded -= OnPlaybackEnded;
         lifetime.Cancel();
-        try { await Task.WhenAll(pending, pendingVolume); }
+        try { await Task.WhenAll(pending, pendingVolume, pendingProgress); }
         finally { lifetime.Dispose(); }
     }
 

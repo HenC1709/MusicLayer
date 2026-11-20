@@ -63,6 +63,13 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 - El deslizador ajusta el volumen de 0 a 100. MusicLayer aplica el valor al audio activo y lo conserva para la siguiente canción durante la sesión. Guardar el valor entre reinicios queda para el Sprint 4.
 - Validación manual en Windows. Bajar el volumen antes de iniciar una canción. Con el audio en reproducción, mover el deslizador hasta 0 y volver a subirlo. Comprobar que el mismo nivel se mantiene tras pausar, reanudar y pasar a otra canción.
 
+## Sprint 3 — Interfaz y MVP
+
+### Tarea 1 — Progreso de reproducción
+
+- Mostrar tiempo transcurrido y duración en la ventana. El indicador consulta la posición de la salida de audio, se congela al pausar y se restablece al detener, finalizar o cambiar de canción.
+- Validación manual en Windows. Reproducir una canción conocida, comprobar los tiempos, pausar y esperar unos segundos, reanudar y luego pasar a un archivo de distinta duración. Al detener o dejar terminar la canción, comprobar que el tiempo vuelve a cero.
+
 ## Plantilla para cada sprint
 
 ### Sprint
