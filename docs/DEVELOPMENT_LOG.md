@@ -40,3 +40,11 @@ Agrega una entrada por cada error, bug o aprendizaje relevante.
 - **Qué cambió.** Una pista con título y artista ya se puede resolver desde el servicio. Se descartan las diferencias de versión, de álbum cuando ambos están identificados y de duración superiores a dos segundos. Las coincidencias igual de probables quedan sin resolver. El resultado distingue letra disponible, instrumental, sin coincidencia y fallo temporal.
 - **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 66 pruebas xUnit, incluidas 21 nuevas con selección de versiones, respuestas HTTP simuladas, cancelación y plazos de reintento.
 - **Pendiente para LRCLIB.** Parser LRC, caché local, vista WPF con cancelación al cambiar de canción y salto de reproducción. La consulta desde la interfaz se habilitará al integrar la vista de letras.
+
+## LRCLIB, tarea 3 — Parser LRC y línea activa (2026-11-20)
+
+- **Antes.** El cliente devolvía el texto plano y el texto LRC con sus marcas de tiempo.
+- **Qué se hizo.** Application interpreta una o varias marcas por línea, fracciones de segundo y el ajuste global `offset` en milisegundos. Ordena las líneas por tiempo, descarta las entradas sin marca válida y conserva las líneas vacías con tiempo para representar pausas en la letra.
+- **Qué cambió.** La posición actual permite obtener el índice de la línea activa mediante búsqueda binaria, incluso tras un salto hacia atrás. Si el LRC carece de texto sincronizable, se usa la letra plana disponible. El resultado también distingue pista instrumental, letra no disponible y servicio temporalmente indisponible.
+- **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 84 pruebas xUnit, incluidas 18 nuevas sobre las marcas, el ajuste de tiempo, los saltos de posición y los estados de letra.
+- **Pendiente para LRCLIB.** Caché local, vista WPF sincronizada con el reloj de reproducción y salto de audio. La validación del resaltado durante la reproducción queda para la integración de WPF.
