@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using MusicLayer.Application.Abstractions;
@@ -5,6 +6,7 @@ using MusicLayer.Application.UseCases.Library;
 using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Infrastructure.Audio;
 using MusicLayer.Infrastructure.FileSystem;
+using MusicLayer.Infrastructure.Lyrics;
 using MusicLayer.Infrastructure.Metadata;
 using MusicLayer.Presentation.Wpf.ViewModels;
 using MusicLayer.Presentation.Wpf.Views;
@@ -22,6 +24,8 @@ public partial class App : System.Windows.Application
             .AddSingleton<IMusicFileScanner, MusicFileScanner>()
             .AddSingleton<ITrackMetadataReader, TagLibTrackMetadataReader>()
             .AddSingleton<ICoverArtReader, TagLibCoverArtReader>()
+            .AddSingleton(_ => CreateLyricsHttpClient())
+            .AddSingleton<ILyricsProvider, LrclibClient>()
             .AddSingleton<ScanMusicFolder>()
             .AddSingleton<PlaySong>()
             .AddSingleton<PausePlayback>()
@@ -39,5 +43,21 @@ public partial class App : System.Windows.Application
     internal async Task ReleaseServicesAsync()
     {
         if (services is not null) await services.DisposeAsync();
+    }
+
+    private static HttpClient CreateLyricsHttpClient()
+    {
+        var client = new HttpClient(new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+        })
+        {
+            BaseAddress = new Uri("https://lrclib.net"),
+            Timeout = TimeSpan.FromSeconds(8)
+        };
+        var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+        client.DefaultRequestHeaders.UserAgent.ParseAdd($"MusicLayer/{version} (https://github.com/HenC1709/MusicLayerr)");
+        return client;
     }
 }

@@ -32,3 +32,11 @@ Agrega una entrada por cada error, bug o aprendizaje relevante.
 - **Qué cambió al usar la app.** La biblioteca y la barra muestran el título de la etiqueta, con el nombre del archivo como respaldo. En **Ahora suena**, artista y álbum acompañan a la pista activa. Si las etiquetas están ausentes o ilegibles, la pista sigue en la biblioteca.
 - **Verificación.** La solución compiló con 0 errores y 0 advertencias, y pasaron 45 pruebas xUnit. Se comprobó en WPF la importación, visualización y reproducción de dos FLAC de prueba, uno con etiquetas y otro sin ellas. Queda probar la presentación con una biblioteca real y etiquetas largas o incompletas.
 - **Pendiente para LRCLIB.** Cliente HTTP y selección de coincidencias, parser LRC, caché, vista de letras sincronizadas y salto de reproducción. Para la futura consulta, el título y el artista salen de las etiquetas y la duración puede obtenerse del progreso de la pista activa.
+
+## LRCLIB, tarea 2 — Cliente HTTP y coincidencias (2026-11-20)
+
+- **Antes.** MusicLayer leía las etiquetas locales y todavía carecía de un servicio para buscar letras.
+- **Qué se hizo.** Se añadió el contrato en Application, el cliente HTTP reutilizable en Infrastructure y su registro en el contenedor de WPF. El cliente identifica MusicLayer, consulta `/api/get` y permite una sola consulta de respaldo a `/api/search`. Las llamadas son secuenciales, aceptan cancelación y respetan el plazo de `Retry-After`.
+- **Qué cambió.** Una pista con título y artista ya se puede resolver desde el servicio. Se descartan las diferencias de versión, de álbum cuando ambos están identificados y de duración superiores a dos segundos. Las coincidencias igual de probables quedan sin resolver. El resultado distingue letra disponible, instrumental, sin coincidencia y fallo temporal.
+- **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 66 pruebas xUnit, incluidas 21 nuevas con selección de versiones, respuestas HTTP simuladas, cancelación y plazos de reintento.
+- **Pendiente para LRCLIB.** Parser LRC, caché local, vista WPF con cancelación al cambiar de canción y salto de reproducción. La consulta desde la interfaz se habilitará al integrar la vista de letras.
