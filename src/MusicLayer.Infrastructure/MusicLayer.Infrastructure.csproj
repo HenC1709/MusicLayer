@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <ProjectReference Include="..\MusicLayer.Domain\MusicLayer.Domain.csproj" />
     <ProjectReference Include="..\MusicLayer.Application\MusicLayer.Application.csproj" />
   </ItemGroup>

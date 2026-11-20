@@ -15,20 +15,43 @@ public sealed class MusicFileScanner : IMusicFileScanner
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(folder);
             var songs = new List<Song>();
-            var options = new EnumerationOptions
+            var rootOptions = new EnumerationOptions
+            {
+                IgnoreInaccessible = false,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            var subtreeOptions = new EnumerationOptions
             {
                 RecurseSubdirectories = true,
                 IgnoreInaccessible = true,
                 AttributesToSkip = FileAttributes.ReparsePoint
             };
-            foreach (var file in Directory.EnumerateFiles(folder, "*", options))
+            foreach (var entry in new DirectoryInfo(folder).EnumerateFileSystemInfos("*", rootOptions))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (Extensions.Contains(Path.GetExtension(file)))
-                    songs.Add(new Song(Path.GetFullPath(file)));
+                if (entry is DirectoryInfo directory)
+                {
+                    try
+                    {
+                        foreach (var path in Directory.EnumerateFiles(directory.FullName, "*", subtreeOptions))
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            AddIfSupported(path);
+                        }
+                    }
+                    catch (DirectoryNotFoundException) { /* A subfolder disappeared during the scan. */ }
+                }
+                else
+                    AddIfSupported(entry.FullName);
             }
             return songs.OrderBy(song => song.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(song => song.FilePath, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+                .ThenBy(song => song.FilePath, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            void AddIfSupported(string path)
+            {
+                if (Extensions.Contains(Path.GetExtension(path)))
+                    songs.Add(new Song(path));
+            }
         }, cancellationToken);
 }

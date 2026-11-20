@@ -63,6 +63,59 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 - El deslizador ajusta el volumen de 0 a 100. MusicLayer aplica el valor al audio activo y lo conserva para la siguiente canción durante la sesión. Guardar el valor entre reinicios queda para el Sprint 4.
 - Validación manual en Windows. Bajar el volumen antes de iniciar una canción. Con el audio en reproducción, mover el deslizador hasta 0 y volver a subirlo. Comprobar que el mismo nivel se mantiene tras pausar, reanudar y pasar a otra canción.
 
+## Sprint 3 — Interfaz y MVP
+
+### Tarea 1 — Progreso de reproducción
+
+- Mostrar tiempo transcurrido y duración en la ventana. El indicador consulta la posición de la salida de audio, se congela al pausar y se restablece al detener, finalizar o cambiar de canción.
+- Validación manual en Windows. Reproducir una canción conocida, comprobar los tiempos, pausar y esperar unos segundos, reanudar y luego pasar a un archivo de distinta duración. Al detener o dejar terminar la canción, comprobar que el tiempo vuelve a cero.
+
+### Tarea 2 — Biblioteca WPF y reproductor persistente
+
+- Las vistas **Canciones** y **Ahora suena** aplican los dos primeros diseños de `Guide/` a la biblioteca local y comparten una sesión y una barra de transporte. La ilustración es un recurso empaquetado con la aplicación.
+- La selección permite elegir qué reproducir con Enter, doble clic o **Reproducir selección**. Una marca independiente señala la posición activa, incluso cuando hay entradas duplicadas. Al importar otra carpeta se reemplaza la cola y la barra sigue mostrando la pista anterior hasta que termina o se cambia.
+- Para verificar en Windows, importar una carpeta con dos canciones, reproducir la primera y seleccionar la segunda con las flechas. Comprobar que el título y la marca siguen en la primera. Cambiar de vista, pausar, reanudar y detener desde la barra. Tras detener, la selección se conserva y se borra la marca.
+
+### Tarea 3 — Estados vacíos, importación y errores
+
+- La primera apertura invita a elegir una carpeta. Durante el escaneo se muestra la búsqueda de MP3, WAV y FLAC. Una importación termina con el número de canciones encontradas o con una indicación para elegir otra carpeta si no hay archivos compatibles.
+- Si falla la lectura de la carpeta seleccionada, se conservan la lista y la selección anteriores. Durante un fallo de reproducción, el aviso permite volver a la biblioteca y elegir otra canción. El detalle técnico del error está disponible al pasar el puntero sobre el mensaje.
+- Verificado en Windows con carpetas temporales, una carpeta ausente, un WAV dañado y otro válido. Se comprobó la recuperación desde **Ahora suena**, también con la ventana en su tamaño mínimo.
+
+### Tarea 4 — Carátula FLAC · Completada
+
+- TagLibSharp lee la portada frontal incrustada en el FLAC. Si no hay una imagen marcada como frontal, usa la primera imagen incrustada disponible.
+- La vista previa sigue la selección cuando el reproductor está detenido. Al reproducir o pausar, ambos tamaños de portada siguen la pista activa. La lectura se realiza bajo demanda y una imagen ausente o ilegible deja visible la ilustración incluida con MusicLayer.
+
+## Sprint 4 — Pulido y entrega
+
+Dejar MusicLayer listo para portafolio con metadatos locales, preferencias que se recuperan al abrir la app y un README que permita ejecutar el proyecto desde un clon limpio.
+
+### Tarea 1 — Título, artista y álbum
+
+- Reutilizar TagLibSharp para leer las etiquetas de texto de MP3, WAV y FLAC. Mostrar el título en la biblioteca y los datos disponibles en **Ahora suena**.
+- Criterio de aceptación. Un archivo etiquetado muestra sus datos. Si falta el título o falla la lectura de etiquetas, la canción se puede reproducir y la aplicación muestra el nombre del archivo.
+
+### Tarea 2 — Carátulas en los demás formatos
+
+- Extender el lector de carátulas a MP3 y a los WAV que incluyan imágenes incrustadas legibles por TagLibSharp.
+- Criterio de aceptación. La carátula aparece al seleccionar o reproducir una pista. FLAC sigue funcionando y las pistas sin una imagen legible muestran la ilustración de MusicLayer.
+
+### Tarea 3 — Repositorio de preferencias en SQLite
+
+- Definir un contrato en Application e implementar en Infrastructure el almacenamiento de la última carpeta importada con éxito y del volumen. Crear la base bajo `%LocalAppData%\MusicLayer` al primer uso.
+- Criterio de aceptación. Guardar y volver a leer las preferencias con una segunda instancia del repositorio. Comprobar que una base recién creada proporciona los valores iniciales.
+
+### Tarea 4 — Restaurar las preferencias al abrir MusicLayer
+
+- Conectar el repositorio al arranque y a las acciones de importar y ajustar volumen. Al abrir la aplicación, recuperar el volumen y volver a escanear la última carpeta guardada.
+- Criterio de aceptación. Tras reiniciar, se recuperan la biblioteca y el volumen guardados. La reproducción queda detenida. Si la carpeta se movió, aparece un aviso y se puede elegir otra.
+
+### Tarea 5 — Revisión final y README de portafolio
+
+- Validar importación y reproducción de MP3, WAV y FLAC en Windows, junto con la recuperación de preferencias. Añadir capturas actuales, un diagrama de capas y las instrucciones de compilación y ejecución al README.
+- Criterio de aceptación. Desde un clon limpio se puede compilar, ejecutar las pruebas y abrir MusicLayer siguiendo el README.
+
 ## Plantilla para cada sprint
 
 ### Sprint
@@ -76,4 +129,4 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 
 ## Dirección inicial
 
-El plan original propone primero escaneo y reproducción, después controles y cola, luego interfaz WPF y finalmente metadatos y persistencia. Los detalles se definirán antes de iniciar cada sprint. Para el MVP se mostrará el nombre del archivo; SQLite se abordará en el Sprint 4.
+El plan original propone primero escaneo y reproducción, después controles y cola, luego interfaz WPF y finalmente metadatos y persistencia. La biblioteca se construye en memoria a partir de la carpeta elegida. SQLite guardará las preferencias locales del Sprint 4.

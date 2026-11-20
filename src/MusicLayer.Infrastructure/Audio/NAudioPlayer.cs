@@ -19,9 +19,10 @@ public sealed class NAudioPlayer : IAudioPlayer
             {
                 ObjectDisposedException.ThrowIf(disposed, this);
                 cancellationToken.ThrowIfCancellationRequested();
-                ReleaseAudio();
+                var replacingOutput = output is not null;
                 try
                 {
+                    ReleaseAudio();
                     reader = new MediaFoundationReader(filePath);
                     output = new WaveOutEvent();
                     output.PlaybackStopped += OnStopped;
@@ -29,7 +30,17 @@ public sealed class NAudioPlayer : IAudioPlayer
                     output.Volume = volume;
                     output.Play();
                 }
-                catch { ReleaseAudio(); throw; }
+                catch (Exception error)
+                {
+                    try { ReleaseAudio(); }
+                    finally
+                    {
+                        // The previous output was detached even if the new track could not start.
+                        if (replacingOutput)
+                            PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
+                    }
+                    throw;
+                }
             }
         }, cancellationToken);
 
@@ -86,6 +97,27 @@ public sealed class NAudioPlayer : IAudioPlayer
                     output.Volume = newVolume;
 
                 volume = newVolume;
+            }
+        }, cancellationToken);
+
+    public Task<PlaybackProgress?> GetProgressAsync(CancellationToken cancellationToken = default)
+        => Task.Run<PlaybackProgress?>(() =>
+        {
+            lock (gate)
+            {
+                ObjectDisposedException.ThrowIf(disposed, this);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (reader is null || output is not { PlaybackState: not PlaybackState.Stopped } activeOutput)
+                    return null;
+
+                var duration = reader.TotalTime;
+                if (duration <= TimeSpan.Zero)
+                    return null;
+
+                // The reader fills buffers ahead of the output. Use the device's played bytes.
+                var seconds = (double)activeOutput.GetPosition() / activeOutput.OutputWaveFormat.AverageBytesPerSecond;
+                var elapsed = TimeSpan.FromSeconds(Math.Clamp(seconds, 0, duration.TotalSeconds));
+                return new PlaybackProgress(elapsed, duration);
             }
         }, cancellationToken);
 

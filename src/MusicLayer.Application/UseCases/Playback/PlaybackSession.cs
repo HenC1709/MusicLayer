@@ -9,6 +9,8 @@ public sealed class PlaybackSession(PlaySong playSong)
 
     // Read after awaiting an operation when the caller owns the session's commands.
     public int? CurrentIndex => queue.CurrentIndex;
+    public bool HasNext => queue.NextIndex.HasValue;
+    public bool HasPrevious => queue.PreviousIndex.HasValue;
 
     public async Task ReplaceQueueAsync(IEnumerable<Song> songs, CancellationToken cancellationToken = default)
     {

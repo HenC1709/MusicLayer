@@ -5,6 +5,7 @@ using MusicLayer.Application.UseCases.Library;
 using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Infrastructure.Audio;
 using MusicLayer.Infrastructure.FileSystem;
+using MusicLayer.Infrastructure.Metadata;
 using MusicLayer.Presentation.Wpf.ViewModels;
 using MusicLayer.Presentation.Wpf.Views;
 
@@ -19,6 +20,7 @@ public partial class App : System.Windows.Application
         services = new ServiceCollection()
             .AddSingleton<IAudioPlayer, NAudioPlayer>()
             .AddSingleton<IMusicFileScanner, MusicFileScanner>()
+            .AddSingleton<ICoverArtReader, TagLibCoverArtReader>()
             .AddSingleton<ScanMusicFolder>()
             .AddSingleton<PlaySong>()
             .AddSingleton<PausePlayback>()

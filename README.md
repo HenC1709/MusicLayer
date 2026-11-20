@@ -9,7 +9,7 @@ Reproductor de música de escritorio para Windows, desarrollado en C# con WPF. E
 - Mostrar el nombre del archivo actual y ofrecer controles de volumen y progreso.
 - Mostrar errores de lectura, archivos dañados, carpetas vacías y formatos no admitidos.
 
-Los metadatos, las carátulas y la persistencia SQLite quedan para el Sprint 4. Las playlists, el modo aleatorio, repeat, el ecualizador y una versión móvil quedan para después del MVP.
+El MVP muestra la carátula incrustada en los archivos FLAC. La lectura de título, artista y álbum y la persistencia SQLite quedan para el Sprint 4. Las playlists, el modo aleatorio, repeat, el ecualizador y una versión móvil quedan para después del MVP.
 
 ## Estructura
 
@@ -36,22 +36,30 @@ El detalle de cada sprint se acordará en `docs/SPRINTS.md`. Para el MVP, la bib
 ## Decisiones iniciales
 
 - Aplicación de escritorio Windows con WPF y .NET 10.
-- Las dependencias de audio y etiquetas previstas son NAudio y TagLibSharp.
+- NAudio reproduce el audio y TagLibSharp lee las imágenes incrustadas en los FLAC.
 - La futura base SQLite vivirá en el directorio de datos local de la aplicación, fuera del repositorio.
 - Domain y Application no dependerán de WPF, SQLite ni de la implementación concreta del audio.
 
 ## Empezar
 
-Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop instalada, o ejecuta `dotnet build MusicLayer.sln` con el SDK de .NET 10. La restauración requiere acceso a NuGet para descargar NAudio.
+Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop instalada, o ejecuta `dotnet build MusicLayer.sln` con el SDK de .NET 10. La primera restauración descarga las dependencias desde NuGet.
 
-Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana. Elige una carpeta, selecciona un archivo y pulsa **Reproducir seleccionada**. Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Si todavía no has reproducido una canción de la cola, **Siguiente** inicia la primera. Al llegar a un extremo, la cola conserva su posición.
+Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana. En **Canciones**, pulsa **Importar carpeta**. Selecciona una fila y pulsa **Reproducir selección**, haz doble clic o presiona **Enter** sobre la fila. El fondo cyan identifica la selección. El punto verde identifica la pista que está sonando o en pausa.
 
-Pulsa **Pausar** para interrumpir la canción actual y **Reanudar** para seguir desde la misma posición. **Reproducir seleccionada** inicia el archivo elegido desde el principio.
+Con el reproductor detenido, selecciona un FLAC para ver su carátula en el panel. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si el FLAC carece de imagen o la imagen es ilegible, aparece la ilustración de MusicLayer.
+
+Abre **Ahora suena** para ver la pista activa y su cola. Ambas vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio. El nombre y la carpeta corresponden al archivo local.
+
+Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Antes de la primera reproducción, **Siguiente** inicia la primera canción. Al llegar a un extremo, la dirección que ya no tiene destino se deshabilita.
 
 **Detener** corta el audio y libera el archivo, incluso cuando está en pausa. La cola conserva la posición para seguir navegando con **Anterior** y **Siguiente**.
 
 Usa **Volumen** para ajustar el sonido de 0 a 100 antes o durante la reproducción. **0** silencia el audio sin detenerlo. El ajuste se mantiene al pausar, reanudar, detener o cambiar de canción. Al volver a abrir MusicLayer, el deslizador empieza en 100. Guardar esta preferencia queda para el Sprint 4.
 
-El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows. La barra de progreso sigue pendiente.
+La **barra de progreso** muestra el tiempo transcurrido y la duración de la canción. Al pausar, el tiempo queda fijo hasta reanudar. La barra vuelve a cero al detener o finalizar, y se actualiza para cada canción nueva. Por ahora, solo muestra la posición.
+
+El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows.
+
+Al importar una carpeta, MusicLayer muestra cuántas canciones encontró. Si la carpeta está vacía o solo contiene otros formatos, **Elegir carpeta** permite probar con otra. Si falla la lectura de la carpeta elegida, la biblioteca anterior sigue disponible. Ante un error de reproducción, **Elegir otra canción** devuelve el foco a la lista para seleccionar una pista con el teclado o el ratón.
 
 Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio.
