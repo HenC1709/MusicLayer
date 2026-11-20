@@ -2,6 +2,7 @@
 **/bin/
 **/obj/
 artifacts/
+Guide/
 
 # Local database and user-specific data
 *.db
