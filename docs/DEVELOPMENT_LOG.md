@@ -56,3 +56,11 @@ Agrega una entrada por cada error, bug o aprendizaje relevante.
 - **Qué cambió.** Una consulta con los mismos metadatos y duración recupera una letra confirmada o el estado instrumental sin conectarse a LRCLIB, incluso tras reiniciar. Los resultados sin coincidencia duran diez minutos en memoria. Un fallo temporal, una cancelación o un archivo de caché ilegible permite volver a consultar.
 - **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 91 pruebas xUnit, incluidas siete nuevas sobre recuperación desde otra instancia, aislamiento por versión, consultas simultáneas, archivos dañados, expiración y cancelación.
 - **Pendiente para LRCLIB.** Vista WPF con cancelación por cambio de canción, resaltado sincronizado y salto de audio. La recuperación sin conexión desde la interfaz se probará con la vista integrada.
+
+## LRCLIB, tarea 5 — Letras en WPF (2026-11-20)
+
+- **Antes.** El cliente, el parser y la caché ya podían recuperar una letra. El reproductor aún carecía de una pantalla para leerla.
+- **Qué se hizo.** Se incorporó la vista **Letras** siguiendo el panel de lectura, la línea verde y la tarjeta de pista de la pantalla 04 de `Guide/`. El ViewModel consulta el proveedor al abrir la vista para la pista activa y usa la posición que el reproductor ya comunica a la barra de progreso.
+- **Qué cambió.** La pausa conserva la línea y, al reanudar, el resaltado sigue el audio. El lector permite desplazarse manualmente y volver con **Seguir línea actual**. Al cambiar de pista o salir de la vista se cancela la consulta anterior. El texto plano, las pistas instrumentales, la falta de coincidencia y los fallos temporales tienen presentación propia.
+- **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 96 pruebas xUnit. En una ventana WPF con un FLAC de prueba silenciado se verificaron la navegación, la recuperación desde JSON sin acceso al proveedor remoto, el resaltado, el desplazamiento manual, el retorno a la línea activa y la limpieza al detener.
+- **Pendiente.** Validar de oído la sincronía con una canción conocida y una consulta real a LRCLIB. La tarea 6 habilitará adelantar y retroceder el audio desde la barra de progreso.

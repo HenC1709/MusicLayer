@@ -48,7 +48,11 @@ Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ven
 
 Con el reproductor detenido, selecciona un FLAC para ver su carátula en el panel. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si el FLAC carece de imagen o la imagen es ilegible, aparece la ilustración de MusicLayer.
 
-Abre **Ahora suena** para ver la pista activa y su cola. El panel muestra título, artista y álbum si están disponibles. Si falta el título, MusicLayer muestra el nombre del archivo. Ambas vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio.
+Abre **Ahora suena** para ver la pista activa y su cola. El panel muestra título, artista y álbum si están disponibles. Si falta el título, MusicLayer muestra el nombre del archivo. Todas las vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio.
+
+Abre **Letras** mientras suena una canción o está en pausa. La línea activa aparece en verde y sigue la posición del audio. Puedes desplazarte para leer otra parte y pulsar **Seguir línea actual** para volver. Si la letra solo tiene texto, se lee con desplazamiento manual. La vista también indica cuándo una pista es instrumental, cuándo falta la letra y cuándo el servicio está temporalmente indisponible.
+
+MusicLayer busca letras únicamente mientras **Letras** está abierta. Primero revisa la caché en `%LocalAppData%\MusicLayer\LyricsCache`. Si necesita consultar LRCLIB, usa el título y artista de las etiquetas, junto con el álbum y la duración disponibles. Una letra ya guardada para esa versión se puede leer sin conexión. Al cambiar de canción o de vista, la consulta pendiente se cancela.
 
 Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Antes de la primera reproducción, **Siguiente** inicia la primera canción. Al llegar a un extremo, la dirección que ya no tiene destino se deshabilita.
 

@@ -1,6 +1,7 @@
 <Window x:Class="MusicLayer.Presentation.Wpf.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:MusicLayer.Presentation.Wpf.Views"
         Title="MusicLayer" Width="1120" Height="720" MinWidth="660" MinHeight="460"
         WindowStartupLocation="CenterScreen" UseLayoutRounding="True" FontFamily="Segoe UI" FontSize="14"
         Background="{DynamicResource CanvasBrush}" Foreground="{DynamicResource InkBrush}">
@@ -27,6 +28,8 @@
                     <TextBlock Text="Biblioteca" Style="{StaticResource Caption}" Margin="12,0,0,10" />
                     <RadioButton x:Name="Library" Content="Canciones" GroupName="Screen" Style="{StaticResource Nav}" IsChecked="True" />
                     <RadioButton x:Name="NowPlaying" Content="Ahora suena" GroupName="Screen" Style="{StaticResource Nav}" Margin="0,3,0,0" />
+                    <RadioButton x:Name="LyricsTab" Content="Letras" GroupName="Screen" Style="{StaticResource Nav}" Margin="0,3,0,0"
+                                 IsChecked="{Binding Lyrics.IsOpen, Mode=TwoWay}" />
                 </StackPanel>
             </Border>
             <Grid Grid.Column="1" Margin="20,16,20,10">
@@ -48,6 +51,9 @@
                                 <Setter Property="Text" Value="Tu biblioteca" />
                                 <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
                                     <Setter Property="Text" Value="Ahora suena" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                    <Setter Property="Text" Value="Letras de canciones" />
                                 </DataTrigger></Style.Triggers>
                             </Style>
                         </TextBlock.Style>
@@ -74,6 +80,9 @@
                             <Style TargetType="Border">
                                 <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
                                     <Setter Property="Grid.Column" Value="2" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger></Style.Triggers>
                             </Style>
                         </Border.Style>
@@ -166,6 +175,17 @@
                             </ScrollViewer>
                         </Grid>
                     </Border>
+                    <views:LyricsView DataContext="{Binding Lyrics}">
+                        <views:LyricsView.Style>
+                            <Style TargetType="views:LyricsView">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger></Style.Triggers>
+                            </Style>
+                        </views:LyricsView.Style>
+                        <views:LyricsView.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></views:LyricsView.Resources>
+                    </views:LyricsView>
                     <Border CornerRadius="13" Background="{StaticResource RaisedBrush}" Padding="16">
                         <Border.Style>
                             <Style TargetType="Border">

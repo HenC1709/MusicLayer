@@ -41,7 +41,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private IReadOnlyList<Song> songs = [];
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
-        PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader)
+        PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader,
+        ILyricsProvider lyricsProvider)
     {
         this.player = player;
         this.scanner = scanner;
@@ -51,11 +52,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.stop = stop;
         this.setVolume = setVolume;
         this.coverReader = coverReader;
+        Lyrics = new LyricsViewModel(lyricsProvider);
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public LyricsViewModel Lyrics { get; }
     public int SelectedIndex
     {
         get => selectedIndex;
@@ -78,7 +81,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public Song? CurrentSong
     {
         get;
-        private set { field = value; RefreshCover(); }
+        private set { field = value; Lyrics.ChangeTrack(value); RefreshCover(); }
     }
     public Song? CoverSong => CurrentSong ?? (SelectedIndex >= 0 && SelectedIndex < Songs.Count ? Songs[SelectedIndex] : null);
     public string CoverLabel => CurrentSong is null && CoverSong is not null ? "Selección" : PlaybackLabel;
@@ -329,7 +332,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
 
         if (!closing && version == progressVersion)
+        {
             SetProgress(snapshot);
+            Lyrics.ObserveProgress(snapshot);
+        }
     }
 
     private void SetProgress(PlaybackProgress? value)
@@ -419,7 +425,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         NotifyControls();
         player.PlaybackEnded -= OnPlaybackEnded;
         lifetime.Cancel();
-        try { await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover); }
+        try { await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover, Lyrics.CloseAsync()); }
         finally { lifetime.Dispose(); }
     }
 
