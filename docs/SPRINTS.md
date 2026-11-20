@@ -91,9 +91,9 @@ Este archivo sirve para acordar el trabajo antes de implementar cada sprint. El 
 
 Dejar MusicLayer listo para portafolio con metadatos locales, preferencias que se recuperan al abrir la app y un README que permita ejecutar el proyecto desde un clon limpio.
 
-### Tarea 1 — Título, artista y álbum
+### Tarea 1 — Título, artista y álbum · Implementada
 
-- Reutilizar TagLibSharp para leer las etiquetas de texto de MP3, WAV y FLAC. Mostrar el título en la biblioteca y los datos disponibles en **Ahora suena**.
+- TagLibSharp lee las etiquetas de texto de MP3, WAV y FLAC al importar la carpeta. La biblioteca muestra el título y **Ahora suena** muestra el artista y el álbum disponibles. La ruta del archivo sigue siendo la referencia para reproducir.
 - Criterio de aceptación. Un archivo etiquetado muestra sus datos. Si falta el título o falla la lectura de etiquetas, la canción se puede reproducir y la aplicación muestra el nombre del archivo.
 
 ### Tarea 2 — Carátulas en los demás formatos

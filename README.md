@@ -9,7 +9,7 @@ Reproductor de música de escritorio para Windows, desarrollado en C# con WPF. E
 - Mostrar el nombre del archivo actual y ofrecer controles de volumen y progreso.
 - Mostrar errores de lectura, archivos dañados, carpetas vacías y formatos no admitidos.
 
-El MVP muestra la carátula incrustada en los archivos FLAC. La lectura de título, artista y álbum y la persistencia SQLite quedan para el Sprint 4. Las playlists, el modo aleatorio, repeat, el ecualizador y una versión móvil quedan para después del MVP.
+MusicLayer lee el título, artista y álbum incrustados en archivos MP3, WAV y FLAC y muestra la carátula incrustada de los FLAC. La persistencia SQLite forma parte del Sprint 4. Las playlists, el modo aleatorio, repeat, el ecualizador y una versión móvil quedan para después del MVP.
 
 ## Estructura
 
@@ -36,7 +36,7 @@ El detalle de cada sprint se acordará en `docs/SPRINTS.md`. Para el MVP, la bib
 ## Decisiones iniciales
 
 - Aplicación de escritorio Windows con WPF y .NET 10.
-- NAudio reproduce el audio y TagLibSharp lee las imágenes incrustadas en los FLAC.
+- NAudio reproduce el audio. TagLibSharp lee las etiquetas de texto de los formatos compatibles y las carátulas FLAC.
 - La futura base SQLite vivirá en el directorio de datos local de la aplicación, fuera del repositorio.
 - Domain y Application no dependerán de WPF, SQLite ni de la implementación concreta del audio.
 
@@ -48,7 +48,7 @@ Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ven
 
 Con el reproductor detenido, selecciona un FLAC para ver su carátula en el panel. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si el FLAC carece de imagen o la imagen es ilegible, aparece la ilustración de MusicLayer.
 
-Abre **Ahora suena** para ver la pista activa y su cola. Ambas vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio. El nombre y la carpeta corresponden al archivo local.
+Abre **Ahora suena** para ver la pista activa y su cola. El panel muestra título, artista y álbum si están disponibles. Si falta el título, MusicLayer muestra el nombre del archivo. Ambas vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio.
 
 Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Antes de la primera reproducción, **Siguiente** inicia la primera canción. Al llegar a un extremo, la dirección que ya no tiene destino se deshabilita.
 

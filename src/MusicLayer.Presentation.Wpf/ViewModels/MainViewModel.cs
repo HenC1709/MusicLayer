@@ -82,6 +82,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     }
     public Song? CoverSong => CurrentSong ?? (SelectedIndex >= 0 && SelectedIndex < Songs.Count ? Songs[SelectedIndex] : null);
     public string CoverLabel => CurrentSong is null && CoverSong is not null ? "Selección" : PlaybackLabel;
+    public string? CoverDescription => CoverSong?.Metadata switch
+    {
+        { Artist: { } artist, Album: { } album } => $"{artist} · {album}",
+        { Artist: { } artist } => artist,
+        { Album: { } album } => album,
+        _ => CoverSong?.FolderName
+    };
     public BitmapSource? CoverImage { get; private set; }
     public int CurrentSongIndex => CurrentSong is null ? -1 : session.CurrentIndex ?? -1;
     public bool CanPlaySelected => IsReady && SelectedIndex >= 0 && SelectedIndex < Songs.Count;
@@ -268,6 +275,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         Notify(nameof(CoverSong));
         Notify(nameof(CoverLabel));
+        Notify(nameof(CoverDescription));
         var path = CoverSong?.FilePath;
         if (closing || path == coverPath) return;
         coverPath = path;

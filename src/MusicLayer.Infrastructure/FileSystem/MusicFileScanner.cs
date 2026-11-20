@@ -3,7 +3,7 @@ using MusicLayer.Domain.Entities;
 
 namespace MusicLayer.Infrastructure.FileSystem;
 
-public sealed class MusicFileScanner : IMusicFileScanner
+public sealed class MusicFileScanner(ITrackMetadataReader metadataReader) : IMusicFileScanner
 {
     private static readonly HashSet<string> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -44,14 +44,14 @@ public sealed class MusicFileScanner : IMusicFileScanner
                 else
                     AddIfSupported(entry.FullName);
             }
-            return songs.OrderBy(song => song.DisplayName, StringComparer.OrdinalIgnoreCase)
+            return songs.OrderBy(song => Path.GetFileNameWithoutExtension(song.FilePath), StringComparer.OrdinalIgnoreCase)
                 .ThenBy(song => song.FilePath, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
             void AddIfSupported(string path)
             {
                 if (Extensions.Contains(Path.GetExtension(path)))
-                    songs.Add(new Song(path));
+                    songs.Add(new Song(path, metadataReader.Read(path)));
             }
         }, cancellationToken);
 }

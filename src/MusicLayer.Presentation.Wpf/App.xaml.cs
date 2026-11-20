@@ -20,6 +20,7 @@ public partial class App : System.Windows.Application
         services = new ServiceCollection()
             .AddSingleton<IAudioPlayer, NAudioPlayer>()
             .AddSingleton<IMusicFileScanner, MusicFileScanner>()
+            .AddSingleton<ITrackMetadataReader, TagLibTrackMetadataReader>()
             .AddSingleton<ICoverArtReader, TagLibCoverArtReader>()
             .AddSingleton<ScanMusicFolder>()
             .AddSingleton<PlaySong>()

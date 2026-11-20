@@ -475,7 +475,7 @@ public sealed class MainViewModelTests
         var path = Path.GetTempFileName();
         try
         {
-            var song = new Song(path);
+            var song = new Song(path, new TrackMetadata("Título", "Artista", "Álbum"));
             var other = new Song("otra.flac");
             var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/jPwPCfARkAAB7zAf+x9MCaAAAAAElFTkSuQmCC");
             var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -495,9 +495,12 @@ public sealed class MainViewModelTests
             vm.SelectedIndex = 1;
             await vm.PauseAsync();
             Assert.Same(song, vm.CoverSong);
+            Assert.Equal("Artista · Álbum", vm.CoverDescription);
+            Assert.Equal("Título", vm.CurrentSong?.DisplayName);
             Assert.Same(preview, vm.CoverImage);
             await vm.StopAsync();
             Assert.Same(other, vm.CoverSong);
+            Assert.Equal(other.FolderName, vm.CoverDescription);
             Assert.Null(vm.CoverImage);
         }
         finally { File.Delete(path); }

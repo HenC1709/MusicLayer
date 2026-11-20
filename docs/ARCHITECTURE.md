@@ -8,7 +8,7 @@ Infrastructure → Application + Domain
 Presentation.Wpf → Infrastructure (composition root)
 ```
 
-Domain contiene reglas independientes del framework. Application organiza los casos de uso y define los contratos. Infrastructure implementa el audio, el escaneo de archivos y la lectura de carátulas FLAC con TagLibSharp. App.xaml.cs registra los servicios en Microsoft.Extensions.DependencyInjection y crea la ventana. MainViewModel recibe la imagen incrustada a través de ICoverArtReader y la decodifica fuera del hilo de interfaz. La lectura de etiquetas de texto y la persistencia SQLite quedan para el Sprint 4.
+Domain contiene reglas independientes del framework. Application organiza los casos de uso y define los contratos. Infrastructure implementa el audio, el escaneo de archivos y la lectura de etiquetas con TagLibSharp. El escáner lee las etiquetas de texto mediante `ITrackMetadataReader` fuera del hilo de interfaz y conserva los metadatos disponibles en cada `Song`. App.xaml.cs registra los servicios en Microsoft.Extensions.DependencyInjection y crea la ventana. MainViewModel recibe la carátula FLAC a través de ICoverArtReader y la decodifica fuera del hilo de interfaz. La persistencia SQLite forma parte del Sprint 4.
 
 ## SQLite local
 

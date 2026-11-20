@@ -186,7 +186,8 @@
                             <TextBlock Grid.Row="2" FontSize="21" FontWeight="SemiBold"
                                        Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
                                        ToolTip="{Binding CoverSong.FilePath}" />
-                            <TextBlock Grid.Row="3" Text="{Binding CoverSong.FolderName}" Style="{StaticResource Caption}" />
+                            <TextBlock Grid.Row="3" Text="{Binding CoverDescription}" ToolTip="{Binding CoverDescription}"
+                                       Style="{StaticResource Caption}" />
                         </Grid>
                     </Border>
                 </Grid>
