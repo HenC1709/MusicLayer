@@ -48,3 +48,11 @@ Agrega una entrada por cada error, bug o aprendizaje relevante.
 - **Qué cambió.** La posición actual permite obtener el índice de la línea activa mediante búsqueda binaria, incluso tras un salto hacia atrás. Si el LRC carece de texto sincronizable, se usa la letra plana disponible. El resultado también distingue pista instrumental, letra no disponible y servicio temporalmente indisponible.
 - **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 84 pruebas xUnit, incluidas 18 nuevas sobre las marcas, el ajuste de tiempo, los saltos de posición y los estados de letra.
 - **Pendiente para LRCLIB.** Caché local, vista WPF sincronizada con el reloj de reproducción y salto de audio. La validación del resaltado durante la reproducción queda para la integración de WPF.
+
+## LRCLIB, tarea 4 — Caché local (2026-11-20)
+
+- **Antes.** Una consulta válida dependía de que LRCLIB respondiera, incluso si la misma letra ya se había obtenido.
+- **Qué se hizo.** Se añadió un contrato de caché y un proveedor que consulta los archivos JSON de `%LocalAppData%\MusicLayer\LyricsCache` antes de acceder a LRCLIB. La clave usa título, artista, álbum y duración disponibles. Los nombres de archivo son hashes de esa clave. Cada escritura sustituye el archivo completo tras terminar la serialización.
+- **Qué cambió.** Una consulta con los mismos metadatos y duración recupera una letra confirmada o el estado instrumental sin conectarse a LRCLIB, incluso tras reiniciar. Los resultados sin coincidencia duran diez minutos en memoria. Un fallo temporal, una cancelación o un archivo de caché ilegible permite volver a consultar.
+- **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 91 pruebas xUnit, incluidas siete nuevas sobre recuperación desde otra instancia, aislamiento por versión, consultas simultáneas, archivos dañados, expiración y cancelación.
+- **Pendiente para LRCLIB.** Vista WPF con cancelación por cambio de canción, resaltado sincronizado y salto de audio. La recuperación sin conexión desde la interfaz se probará con la vista integrada.

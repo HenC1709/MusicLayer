@@ -57,6 +57,6 @@ public sealed class LyricsMatcher(TrackMetadata metadata, TimeSpan? duration)
         => !string.IsNullOrWhiteSpace(first) && !string.IsNullOrWhiteSpace(second) &&
             string.Equals(Normalize(first), Normalize(second), StringComparison.OrdinalIgnoreCase);
 
-    private static string Normalize(string text)
+    internal static string Normalize(string text)
         => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).Normalize();
 }

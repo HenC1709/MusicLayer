@@ -1,8 +1,10 @@
+using System.IO;
 using System.Net.Http;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Library;
+using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Infrastructure.Audio;
 using MusicLayer.Infrastructure.FileSystem;
@@ -25,7 +27,11 @@ public partial class App : System.Windows.Application
             .AddSingleton<ITrackMetadataReader, TagLibTrackMetadataReader>()
             .AddSingleton<ICoverArtReader, TagLibCoverArtReader>()
             .AddSingleton(_ => CreateLyricsHttpClient())
-            .AddSingleton<ILyricsProvider, LrclibClient>()
+            .AddSingleton<LrclibClient>()
+            .AddSingleton<ILyricsCache>(_ => new JsonLyricsCache(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MusicLayer", "LyricsCache")))
+            .AddSingleton<ILyricsProvider>(provider => new CachedLyricsProvider(
+                provider.GetRequiredService<LrclibClient>(), provider.GetRequiredService<ILyricsCache>()))
             .AddSingleton<ScanMusicFolder>()
             .AddSingleton<PlaySong>()
             .AddSingleton<PausePlayback>()
