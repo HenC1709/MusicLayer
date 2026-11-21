@@ -5,19 +5,28 @@ namespace MusicLayer.Infrastructure.Tests;
 
 public sealed class TagLibCoverArtReaderTests
 {
-    [Fact]
-    public void ReadsEmbeddedFlacPicturesInCoverOrderAndReleasesTheFile()
+    [Theory]
+    [InlineData(".FLAC")]
+    [InlineData(".MP3")]
+    [InlineData(".WAV")]
+    public void ReadsEmbeddedPicturesInCoverOrderAndReleasesTheFile(string extension)
     {
-        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.FLAC");
-        // A 44.1 kHz mono FLAC containing a single frame of silence and no pictures.
-        File.WriteAllBytes(path, Convert.FromHexString(
-            "664c614380000022100010000000000000000ac440f00000100000000000000000000000000000000000fff8c908009500000021bd"));
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
         try
         {
+            AudioFixture.Create(path);
             var reader = new TagLibCoverArtReader();
             Assert.Null(reader.ReadEmbeddedCover(path));
-            var back = new TagLib.Picture { Type = TagLib.PictureType.BackCover, MimeType = "image/jpeg", Data = new byte[] { 1, 2 } };
-            var front = new TagLib.Picture { Type = TagLib.PictureType.FrontCover, MimeType = "image/jpeg", Data = new byte[] { 3, 4 } };
+            var back = new TagLib.Picture
+            {
+                Type = TagLib.PictureType.BackCover, MimeType = "image/gif",
+                Data = Convert.FromBase64String("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==")
+            };
+            var front = new TagLib.Picture
+            {
+                Type = TagLib.PictureType.FrontCover, MimeType = "image/png",
+                Data = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/jPwPCfARkAAB7zAf+x9MCaAAAAAElFTkSuQmCC")
+            };
             void SavePictures(params TagLib.IPicture[] pictures)
             {
                 using var file = TagLib.File.Create(path);

@@ -44,19 +44,45 @@
                             <TextBlock Text="Importar carpeta" />
                         </StackPanel>
                     </Button>
-                    <TextBlock FontSize="28" FontWeight="SemiBold">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                <Setter Property="Text" Value="Tu biblioteca" />
-                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                    <Setter Property="Text" Value="Ahora suena" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                    <Setter Property="Text" Value="Letras de canciones" />
-                                </DataTrigger></Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <Grid>
+                        <TextBlock FontSize="28" FontWeight="SemiBold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                    <Setter Property="Text" Value="Tu biblioteca" />
+                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
+                                        <Setter Property="Text" Value="Ahora suena" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger></Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Border Background="{StaticResource RaisedBrush}" CornerRadius="13"
+                            Padding="12,8" Margin="0,0,12,0">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger></Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <DockPanel>
+                                <Image DockPanel.Dock="Left" Width="48" Height="48" Margin="0,0,12,0"
+                                   Source="{Binding CoverImage, TargetNullValue={StaticResource Cover}}"
+                                   Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding CoverLabel}" Margin="12,0,0,0"
+                                       Style="{StaticResource Caption}" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
+                                           FontSize="18" FontWeight="SemiBold" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                    <TextBlock Text="{Binding CoverDescription}" Style="{StaticResource Caption}"
+                                           ToolTip="{Binding CoverDescription}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
                 </DockPanel>
 
                 <Grid Grid.Row="1">
@@ -114,8 +140,8 @@
                                 </DockPanel>
                                 <ListBox x:Name="SongList" Grid.Row="1" Background="Transparent"
                                          BorderThickness="0" Padding="0" Foreground="{StaticResource InkBrush}"
-                                         AutomationProperties.Name="Canciones en orden de reproducción" ItemsSource="{Binding Songs}"
-                                         SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}" AlternationCount="2147483647"
+                                         AutomationProperties.Name="Canciones en orden de reproducción" ItemsSource="{Binding SongRows}"
+                                         SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}" AlternationCount="2"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.VirtualizationMode="Recycling"
                                          MouseDoubleClick="ActivateRow" PreviewKeyDown="ActivateRowFromKeyboard"
                                          ItemContainerStyle="{StaticResource SongRow}">
@@ -124,9 +150,9 @@
                                     </ListBox.Resources>
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <StackPanel ToolTip="{Binding FilePath}">
-                                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding FolderName}" FontSize="12" />
+                                            <StackPanel ToolTip="{Binding Song.FilePath}">
+                                                <TextBlock Text="{Binding Song.DisplayName}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Song.FolderName}" FontSize="12" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
@@ -174,7 +200,7 @@
                             </ScrollViewer>
                         </Grid>
                     </Border>
-                    <views:LyricsView DataContext="{Binding Lyrics}">
+                    <views:LyricsView Grid.ColumnSpan="3" DataContext="{Binding Lyrics}">
                         <views:LyricsView.Style>
                             <Style TargetType="views:LyricsView">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -191,6 +217,9 @@
                                 <Setter Property="Grid.Column" Value="2" />
                                 <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
                                     <Setter Property="Grid.Column" Value="0" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger></Style.Triggers>
                             </Style>
                         </Border.Style>
@@ -230,24 +259,39 @@
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="Elegir otra canción" Click="ChooseAnotherSong"
-                                IsEnabled="{Binding IsReady}" Margin="8,0,0,0">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Elegir otra canción" Click="ChooseAnotherSong"
+                                    IsEnabled="{Binding IsReady}" Margin="8,0,0,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                         <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                        <TextBlock Text="{Binding Status}" TextWrapping="Wrap" ToolTip="{Binding StatusDetail}"
+                                        <Style.Triggers><DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger></Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" ToolTip="{Binding StatusDetail}"
                                    AutomationProperties.LiveSetting="Polite" />
-                    </DockPanel>
+                        </DockPanel>
+                        <TextBlock Text="{Binding PreferencesWarning}" TextWrapping="Wrap"
+                               AutomationProperties.LiveSetting="Polite">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                    <Setter Property="Margin" Value="0,4,0,0" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PreferencesWarning}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
                 </Border>
             </Grid>
         </Grid>

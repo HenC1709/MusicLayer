@@ -22,7 +22,7 @@ public sealed class LyricRow(TimedLyricLine line) : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-public sealed class LyricsViewModel(ILyricsProvider provider, Func<TimeSpan, Task> seekTo) : INotifyPropertyChanged
+public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, Task> seekTo) : INotifyPropertyChanged
 {
     private CancellationTokenSource? request;
     private Task pending = Task.CompletedTask;
@@ -79,25 +79,17 @@ public sealed class LyricsViewModel(ILyricsProvider provider, Func<TimeSpan, Tas
     {
         if (!IsOpen || !sampled || requested || closed || track is null) return;
         requested = true;
-        if (track.Metadata is not { } tags || string.IsNullOrWhiteSpace(tags.Artist) || string.IsNullOrWhiteSpace(tags.Title))
-        {
-            SetStatus("Letra no disponible");
-            return;
-        }
-
         SetStatus("Buscando letra…");
         request = new CancellationTokenSource();
-        var lookup = LoadAsync(tags, progress?.Duration, request);
+        var lookup = LoadAsync(track, progress?.Duration, request);
         pending = pending.IsCompleted ? lookup : Task.WhenAll(pending, lookup);
     }
 
-    private async Task LoadAsync(TrackMetadata tags, TimeSpan? duration, CancellationTokenSource source)
+    private async Task LoadAsync(Song song, TimeSpan? duration, CancellationTokenSource source)
     {
         try
         {
-            var result = await provider.LookupAsync(tags, duration, source.Token);
-            source.Token.ThrowIfCancellationRequested();
-            var parsed = await Task.Run(() => LyricsDocument.FromLookup(result), source.Token);
+            var parsed = await loadLyrics.ExecuteAsync(song, duration, source.Token);
             if (request != source || source.IsCancellationRequested) return;
             document = parsed;
             Rows = parsed.Lines.Select(line => new LyricRow(line)).ToArray();
