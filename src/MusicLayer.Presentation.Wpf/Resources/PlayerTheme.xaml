@@ -101,11 +101,12 @@
     <ControlTemplate x:Key="TrackButton" TargetType="RepeatButton">
         <Border Background="{TemplateBinding Background}" CornerRadius="2" />
     </ControlTemplate>
-    <Style x:Key="VolumeSlider" TargetType="Slider">
+    <Style x:Key="PlaybackSlider" TargetType="Slider">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Slider">
-                    <Border x:Name="FocusRing" Height="24" Padding="2,0" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
+                    <Border x:Name="FocusRing" Height="24" Padding="2,0" Background="Transparent"
+                            BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
                         <Track x:Name="PART_Track" VerticalAlignment="Center">
                             <Track.DecreaseRepeatButton>
                                 <RepeatButton Command="Slider.DecreaseLarge" Focusable="False" Height="4"

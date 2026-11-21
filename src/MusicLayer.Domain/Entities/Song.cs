@@ -2,10 +2,11 @@ namespace MusicLayer.Domain.Entities;
 
 public sealed record Song
 {
-    public Song(string filePath)
+    public Song(string filePath, TrackMetadata? metadata = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         FilePath = Path.GetFullPath(filePath);
+        Metadata = metadata;
     }
 
     public string FolderName
@@ -19,5 +20,8 @@ public sealed record Song
     }
 
     public string FilePath { get; }
-    public string DisplayName => Path.GetFileNameWithoutExtension(FilePath);
+    public TrackMetadata? Metadata { get; }
+    public string DisplayName => string.IsNullOrWhiteSpace(Metadata?.Title)
+        ? Path.GetFileNameWithoutExtension(FilePath)
+        : Metadata.Title;
 }

@@ -1,0 +1,139 @@
+<UserControl x:Class="MusicLayer.Presentation.Wpf.Views.LyricsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="OnLoaded" Unloaded="OnUnloaded" DataContextChanged="ContextChanged">
+    <Border Background="{DynamicResource LibraryBrush}" CornerRadius="13" Padding="18">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <WrapPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource InkBrush}" FontWeight="SemiBold"
+                           VerticalAlignment="Center" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                <Button x:Name="FollowButton" Content="Seguir línea actual" Visibility="Collapsed"
+                        Margin="8,0,0,0" Click="ResumeFollowing" />
+            </WrapPanel>
+            <ListBox x:Name="LinesList" Grid.Row="1" ItemsSource="{Binding Rows}" Background="Transparent"
+                     BorderThickness="0" AutomationProperties.Name="Letra sincronizada"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.PanningMode="VerticalOnly"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     PreviewMouseWheel="ManualWheel" PreviewMouseDown="ManualClick" PreviewKeyDown="ManualKey"
+                     PreviewTouchMove="ManualTouch">
+                <ListBox.Style>
+                    <Style TargetType="ListBox">
+                        <Style.Triggers><DataTrigger Binding="{Binding Rows.Count}" Value="0">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger></Style.Triggers>
+                    </Style>
+                </ListBox.Style>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="Template">
+                            <Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter /></ControlTemplate></Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.Resources>
+                    <Style x:Key="VerseButton" TargetType="Button">
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Text}" />
+                        <Setter Property="ToolTip" Value="Saltar a este verso" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
+                                        <ContentPresenter />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource RaisedBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsKeyboardFocused" Value="True">
+                                            <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text}" Value="">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding DataContext.CanSeek, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                    <DataTemplate x:Key="VerseContent">
+                        <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="21" Margin="10,5,6,5"
+                                   Tag="{DynamicResource {x:Static SystemParameters.ClientAreaAnimationKey}}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                                    <Setter Property="Opacity" Value="0.76" />
+                                    <Setter Property="RenderTransform">
+                                        <Setter.Value><TranslateTransform /></Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="Opacity" Value="1" />
+                                        </DataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsActive}" Value="True" />
+                                                <Condition Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
+                                            <MultiDataTrigger.EnterActions>
+                                                <BeginStoryboard Name="HighlightVerse">
+                                                    <Storyboard FillBehavior="Stop">
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                         From="-8" To="0" Duration="0:0:0.28">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="0.76" To="1" Duration="0:0:0.22" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </MultiDataTrigger.EnterActions>
+                                            <MultiDataTrigger.ExitActions>
+                                                <RemoveStoryboard BeginStoryboardName="HighlightVerse" />
+                                            </MultiDataTrigger.ExitActions>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </DataTemplate>
+                </ListBox.Resources>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource VerseButton}" Click="SeekToVerse"
+                                Content="{Binding}" ContentTemplate="{StaticResource VerseContent}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <ScrollViewer x:Name="PlainScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Style.Triggers><DataTrigger Binding="{Binding PlainText}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger></Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                <TextBlock Text="{Binding PlainText}" TextWrapping="Wrap" FontSize="20" Foreground="{DynamicResource InkBrush}" />
+            </ScrollViewer>
+            <Border Grid.Row="2" Background="{DynamicResource RaisedBrush}" CornerRadius="8" Padding="10,6" Margin="0,10,0,0"
+                    ToolTip="Si la letra aún no está guardada, se envían a LRCLIB el título, el artista, el álbum y la duración disponibles."
+                    AutomationProperties.HelpText="Si la letra aún no está guardada, se envían a LRCLIB el título, el artista, el álbum y la duración disponibles.">
+                <TextBlock Text="Letras de LRCLIB con caché local"
+                           TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryBrush}" />
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

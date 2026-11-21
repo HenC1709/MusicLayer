@@ -20,6 +20,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly ResumePlayback resume;
     private readonly StopPlayback stop;
     private readonly SetPlaybackVolume setVolume;
+    private readonly SeekPlayback seek;
     private readonly ICoverArtReader coverReader;
     private readonly SynchronizationContext context;
     private readonly CancellationTokenSource lifetime = new();
@@ -31,6 +32,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool closing;
     private bool busy;
     private bool changingPlayback;
+    private bool seeking;
     private AudioState audioState;
     private int completionVersion;
     private int progressVersion;
@@ -41,7 +43,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private IReadOnlyList<Song> songs = [];
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
-        PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader)
+        PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader,
+        ILyricsProvider lyricsProvider, SeekPlayback seek)
     {
         this.player = player;
         this.scanner = scanner;
@@ -50,12 +53,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.resume = resume;
         this.stop = stop;
         this.setVolume = setVolume;
+        this.seek = seek;
         this.coverReader = coverReader;
+        Lyrics = new LyricsViewModel(lyricsProvider, position => RunSeekAsync(_ => seek.ExecuteAsync(position, lifetime.Token)));
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+    public LyricsViewModel Lyrics { get; }
     public int SelectedIndex
     {
         get => selectedIndex;
@@ -78,10 +84,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public Song? CurrentSong
     {
         get;
-        private set { field = value; RefreshCover(); }
+        private set { field = value; Lyrics.ChangeTrack(value); RefreshCover(); }
     }
     public Song? CoverSong => CurrentSong ?? (SelectedIndex >= 0 && SelectedIndex < Songs.Count ? Songs[SelectedIndex] : null);
     public string CoverLabel => CurrentSong is null && CoverSong is not null ? "Selección" : PlaybackLabel;
+    public string? CoverDescription => CoverSong?.Metadata switch
+    {
+        { Artist: { } artist, Album: { } album } => $"{artist} · {album}",
+        { Artist: { } artist } => artist,
+        { Album: { } album } => album,
+        _ => CoverSong?.FolderName
+    };
     public BitmapSource? CoverImage { get; private set; }
     public int CurrentSongIndex => CurrentSong is null ? -1 : session.CurrentIndex ?? -1;
     public bool CanPlaySelected => IsReady && SelectedIndex >= 0 && SelectedIndex < Songs.Count;
@@ -104,6 +117,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public bool CanPause => IsReady && audioState == AudioState.Playing;
     public bool CanResume => IsReady && audioState == AudioState.Paused;
     public bool CanStop => IsReady && audioState != AudioState.Inactive;
+    public bool CanSeek => !closing && (!busy || seeking) && CurrentSong is not null && progress is { Duration.Ticks: > 0 };
     public double ProgressFraction => progress is { } value
         ? value.Elapsed.TotalSeconds / value.Duration.TotalSeconds
         : 0;
@@ -264,10 +278,32 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         return pendingProgress;
     }
 
+    public Task SeekAsync(double fraction)
+        => RunSeekAsync(duration => seek.ExecuteAsync(fraction, duration, lifetime.Token));
+
+    private Task RunSeekAsync(Func<TimeSpan, Task<PlaybackProgress?>> move)
+    {
+        if (!IsReady || !CanSeek || progress is not { } current) return Task.CompletedTask;
+
+        seeking = true;
+        return RunTransportAsync(async () =>
+        {
+            var version = progressVersion;
+            try
+            {
+                var snapshot = await move(current.Duration);
+                if (!closing && version == progressVersion && snapshot is { } position)
+                    ApplyProgress(position);
+            }
+            finally { seeking = false; }
+        });
+    }
+
     private void RefreshCover()
     {
         Notify(nameof(CoverSong));
         Notify(nameof(CoverLabel));
+        Notify(nameof(CoverDescription));
         var path = CoverSong?.FilePath;
         if (closing || path == coverPath) return;
         coverPath = path;
@@ -321,17 +357,25 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
 
         if (!closing && version == progressVersion)
-            SetProgress(snapshot);
+            ApplyProgress(snapshot);
+    }
+
+    private void ApplyProgress(PlaybackProgress? snapshot)
+    {
+        SetProgress(snapshot);
+        Lyrics.ObserveProgress(snapshot);
     }
 
     private void SetProgress(PlaybackProgress? value)
     {
         if (progress == value) return;
 
+        var couldSeek = CanSeek;
         progress = value;
         Notify(nameof(ProgressFraction));
         Notify(nameof(ElapsedTimeText));
         Notify(nameof(DurationText));
+        if (couldSeek != CanSeek) Notify(nameof(CanSeek));
     }
 
     private static string FormatPlaybackTime(TimeSpan time) => time.TotalHours < 1
@@ -411,7 +455,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         NotifyControls();
         player.PlaybackEnded -= OnPlaybackEnded;
         lifetime.Cancel();
-        try { await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover); }
+        try { await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover, Lyrics.CloseAsync()); }
         finally { lifetime.Dispose(); }
     }
 
@@ -441,6 +485,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Notify(nameof(CanPause));
         Notify(nameof(CanResume));
         Notify(nameof(CanStop));
+        Notify(nameof(CanSeek));
     }
 
     private void Notify([CallerMemberName] string? name = null)

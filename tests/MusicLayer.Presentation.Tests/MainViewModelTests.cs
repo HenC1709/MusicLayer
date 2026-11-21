@@ -1,6 +1,7 @@
 using System.IO;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Library;
+using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Domain.Entities;
 using MusicLayer.Presentation.Wpf.ViewModels;
@@ -475,7 +476,7 @@ public sealed class MainViewModelTests
         var path = Path.GetTempFileName();
         try
         {
-            var song = new Song(path);
+            var song = new Song(path, new TrackMetadata("Título", "Artista", "Álbum"));
             var other = new Song("otra.flac");
             var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAQSURBVBhXY/jPwPCfARkAAB7zAf+x9MCaAAAAAElFTkSuQmCC");
             var loaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -495,9 +496,12 @@ public sealed class MainViewModelTests
             vm.SelectedIndex = 1;
             await vm.PauseAsync();
             Assert.Same(song, vm.CoverSong);
+            Assert.Equal("Artista · Álbum", vm.CoverDescription);
+            Assert.Equal("Título", vm.CurrentSong?.DisplayName);
             Assert.Same(preview, vm.CoverImage);
             await vm.StopAsync();
             Assert.Same(other, vm.CoverSong);
+            Assert.Equal(other.FolderName, vm.CoverDescription);
             Assert.Null(vm.CoverImage);
         }
         finally { File.Delete(path); }
@@ -508,10 +512,247 @@ public sealed class MainViewModelTests
         public byte[]? ReadEmbeddedCover(string filePath) => read(filePath);
     }
 
-    private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner, ICoverArtReader? covers = null)
+    [Fact]
+    public async Task LyricsFollowThePlayingTrackAndClockOnlyWhileOpen()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path, new TrackMetadata("Primera", "Artista", "Álbum"));
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, TimeSpan.FromMinutes(3)) };
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(song, new Song(path)), lyrics: lyrics);
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            vm.SelectedIndex = 1;
+            Assert.Empty(lyrics.Requests);
+
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.ActiveLineIndex == 0);
+            vm.Lyrics.IsOpen = true;
+            var first = Assert.Single(lyrics.Requests);
+            Assert.Equal(song.Metadata, first.Tags);
+            Assert.Equal(player.Progress?.Duration, first.Duration);
+            first.Reply.SetResult(new(LyricsLookupStatus.Found, new(1, null, null, null, null, false, null,
+                "[00:00]Inicio\n[00:10]Final")));
+            await loaded;
+            var rows = vm.Lyrics.Rows;
+            player.Progress = new(TimeSpan.FromSeconds(11), TimeSpan.FromMinutes(3));
+            await vm.PauseAsync();
+            Assert.True(rows[1].IsActive);
+            Assert.False(rows[0].IsActive);
+            player.Progress = new(TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(3));
+            await vm.RefreshPlaybackProgressAsync();
+            Assert.True(rows[1].IsActive);
+            await vm.ResumeAsync();
+            await vm.RefreshPlaybackProgressAsync();
+            Assert.True(rows[0].IsActive);
+            Assert.Same(rows, vm.Lyrics.Rows);
+            Assert.Single(lyrics.Requests);
+
+            await vm.PlayNextAsync();
+            Assert.Equal("Letra no disponible", vm.Lyrics.Status);
+            Assert.Empty(vm.Lyrics.Rows);
+            Assert.Single(lyrics.Requests);
+            await vm.StopAsync();
+            Assert.Equal("Reproduce una canción para ver su letra.", vm.Lyrics.Status);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SeekUpdatesTheLyricsInBothDirectionsAndPreservesPlaybackState(bool pause)
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path, new TrackMetadata("Título", "Artista", null));
+            var duration = TimeSpan.FromSeconds(60);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, duration) };
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(song), lyrics: lyrics);
+            Assert.False(vm.CanSeek);
+            await vm.SeekAsync(0.5);
+            Assert.Empty(player.SeekRequests);
+
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            if (pause) await vm.PauseAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.ActiveLineIndex == 0);
+            Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found,
+                new(1, null, null, null, null, false, null, "[00:00]Inicio\n[00:30]Mitad")));
+            await loaded;
+            var rows = vm.Lyrics.Rows;
+            Assert.True(vm.CanSeek);
+
+            await vm.SeekAsync(0.5);
+            Assert.Equal("00:30", vm.ElapsedTimeText);
+            Assert.True(rows[1].IsActive);
+            await vm.SeekAsync(-1);
+            Assert.Equal("00:00", vm.ElapsedTimeText);
+            Assert.True(rows[0].IsActive);
+            await vm.SeekAsync(double.NaN);
+            Assert.Equal(new[] { TimeSpan.FromSeconds(30), TimeSpan.Zero }, player.SeekRequests);
+            Assert.Equal(!pause, vm.IsPlaying);
+            Assert.Equal(pause, vm.CanResume);
+            Assert.Same(song, vm.CurrentSong);
+            Assert.Same(rows, vm.Lyrics.Rows);
+            Assert.Single(lyrics.Requests);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ClockReadStartedBeforeSeekCannotOverwriteTheNewPosition()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var duration = TimeSpan.FromMinutes(2);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, duration) };
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path)));
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            var oldSample = new TaskCompletionSource<PlaybackProgress?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            player.ReadProgress = _ => oldSample.Task;
+            var refresh = vm.RefreshPlaybackProgressAsync();
+            try { await vm.SeekAsync(0.75); }
+            finally { oldSample.SetResult(new(TimeSpan.Zero, duration)); }
+            await refresh;
+            Assert.Equal(0.75, vm.ProgressFraction);
+            Assert.Equal("01:30", vm.ElapsedTimeText);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ActivatingVerseSeeksToItsExactTimestampAndPreservesPlayback(bool paused)
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path, new TrackMetadata("Título", "Artista", null));
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, TimeSpan.FromSeconds(67)) };
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(song), lyrics: lyrics);
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.ActiveLineIndex == 0);
+            Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found,
+                new(1, null, null, null, null, false, null, "[00:00]Estribillo\n[00:04]\n[00:17.375]Estribillo\n[01:10]Fuera de pista")));
+            await loaded;
+            if (paused) await vm.PauseAsync();
+
+            var rows = vm.Lyrics.Rows;
+            await vm.Lyrics.SeekToLineAsync(rows[2]);
+            Assert.True(rows[2].IsActive);
+            Assert.Equal(TimeSpan.FromMilliseconds(17375), Assert.Single(player.SeekRequests));
+            await vm.Lyrics.SeekToLineAsync(rows[0]);
+            Assert.True(rows[0].IsActive);
+            Assert.Equal(paused, vm.CanResume);
+            Assert.Equal(!paused, vm.IsPlaying);
+
+            await vm.Lyrics.SeekToLineAsync(rows[1]);
+            await vm.Lyrics.SeekToLineAsync(rows[3]);
+            await vm.StopAsync();
+            await vm.Lyrics.SeekToLineAsync(rows[2]);
+            Assert.Equal(2, player.SeekRequests.Count);
+            Assert.Single(lyrics.Requests);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task LateLyricsCannotReplaceTheNewTrackAfterSwitchingOrLeavingTheView()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var first = new Song(path, new TrackMetadata("A", "Artista", null));
+            var second = new Song(path, new TrackMetadata("B", "Artista", null));
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(new FakePlayer(), new FakeScanner(first, second), lyrics: lyrics);
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            await vm.PlayNextAsync();
+            Assert.True(lyrics.Requests[0].Token.IsCancellationRequested);
+            vm.Lyrics.IsOpen = false;
+            Assert.True(lyrics.Requests[1].Token.IsCancellationRequested);
+            vm.Lyrics.IsOpen = true;
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.Status == "Letra sin sincronización");
+            lyrics.Requests[2].Reply.SetResult(new(LyricsLookupStatus.Found, new(2, "B", "Artista", null, null, false, "Texto B", null)));
+            await loaded;
+            lyrics.Requests[0].Reply.SetResult(new(LyricsLookupStatus.Instrumental));
+            lyrics.Requests[1].Reply.SetException(new IOException());
+            await vm.DisposeAsync();
+            Assert.Equal("Texto B", vm.Lyrics.PlainText);
+            Assert.Equal("Letra sin sincronización", vm.Lyrics.Status);
+            Assert.Equal(-1, vm.Lyrics.ActiveLineIndex);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(LyricsLookupStatus.NotFound, "Letra no disponible")]
+    [InlineData(LyricsLookupStatus.Instrumental, "Pista instrumental")]
+    [InlineData(LyricsLookupStatus.TemporarilyUnavailable, "Letra temporalmente no disponible")]
+    public async Task LyricsStatusIsIndependentOfPlayback(LyricsLookupStatus status, string expected)
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var lyrics = new FakeLyrics();
+            var song = new Song(path, new TrackMetadata("Título", "Artista", null));
+            await using var vm = CreateViewModel(new FakePlayer(), new FakeScanner(song), lyrics: lyrics);
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.Status == expected);
+            Assert.Single(lyrics.Requests).Reply.SetResult(new(status));
+            await loaded;
+            Assert.True(vm.IsPlaying);
+            Assert.Same(song, vm.CurrentSong);
+            Assert.Empty(vm.Lyrics.Rows);
+        }
+        finally { File.Delete(path); }
+    }
+
+    private static Task WaitForLyrics(LyricsViewModel model, Func<bool> condition)
+    {
+        var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        model.PropertyChanged += OnChanged;
+        void OnChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (!condition()) return;
+            model.PropertyChanged -= OnChanged;
+            signal.TrySetResult();
+        }
+        return signal.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    private sealed class FakeLyrics : ILyricsProvider
+    {
+        public List<(TrackMetadata Tags, TimeSpan? Duration, CancellationToken Token, TaskCompletionSource<LyricsLookupResult> Reply)> Requests { get; } = [];
+
+        public Task<LyricsLookupResult> LookupAsync(TrackMetadata metadata, TimeSpan? duration, CancellationToken cancellationToken = default)
+        {
+            // Complete manually, including after cancellation, to exercise out-of-order replies.
+            var reply = new TaskCompletionSource<LyricsLookupResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Requests.Add((metadata, duration, cancellationToken, reply));
+            return reply.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+    }
+
+    private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner, ICoverArtReader? covers = null, ILyricsProvider? lyrics = null)
         => new(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)),
             new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player), new SetPlaybackVolume(player),
-            covers ?? new FakeCoverReader(_ => null));
+            covers ?? new FakeCoverReader(_ => null), lyrics ?? new FakeLyrics(), new SeekPlayback(player));
 
     private sealed class FakeScanner(params Song[] songs) : IMusicFileScanner
     {
@@ -533,6 +774,7 @@ public sealed class MainViewModelTests
         public List<int> VolumesAtStart { get; } = [];
         public Func<int, Task> ApplyVolume { get; init; } = _ => Task.CompletedTask;
         public PlaybackProgress? Progress { get; set; }
+        public List<TimeSpan> SeekRequests { get; } = [];
         public Func<CancellationToken, Task<PlaybackProgress?>>? ReadProgress { get; set; }
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
         public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
@@ -569,6 +811,14 @@ public sealed class MainViewModelTests
 
         public Task<PlaybackProgress?> GetProgressAsync(CancellationToken cancellationToken = default)
             => ReadProgress?.Invoke(cancellationToken) ?? Task.FromResult(Progress);
+
+        public Task<PlaybackProgress?> SeekAsync(TimeSpan position, CancellationToken cancellationToken = default)
+        {
+            SeekRequests.Add(position);
+            if (Progress is { } progress)
+                Progress = progress with { Elapsed = position };
+            return Task.FromResult(Progress);
+        }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
