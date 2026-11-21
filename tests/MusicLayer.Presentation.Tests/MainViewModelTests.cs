@@ -627,6 +627,46 @@ public sealed class MainViewModelTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ActivatingVerseSeeksToItsExactTimestampAndPreservesPlayback(bool paused)
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path, new TrackMetadata("Título", "Artista", null));
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, TimeSpan.FromSeconds(67)) };
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(song), lyrics: lyrics);
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.ActiveLineIndex == 0);
+            Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found,
+                new(1, null, null, null, null, false, null, "[00:00]Estribillo\n[00:04]\n[00:17.375]Estribillo\n[01:10]Fuera de pista")));
+            await loaded;
+            if (paused) await vm.PauseAsync();
+
+            var rows = vm.Lyrics.Rows;
+            await vm.Lyrics.SeekToLineAsync(rows[2]);
+            Assert.True(rows[2].IsActive);
+            Assert.Equal(TimeSpan.FromMilliseconds(17375), Assert.Single(player.SeekRequests));
+            await vm.Lyrics.SeekToLineAsync(rows[0]);
+            Assert.True(rows[0].IsActive);
+            Assert.Equal(paused, vm.CanResume);
+            Assert.Equal(!paused, vm.IsPlaying);
+
+            await vm.Lyrics.SeekToLineAsync(rows[1]);
+            await vm.Lyrics.SeekToLineAsync(rows[3]);
+            await vm.StopAsync();
+            await vm.Lyrics.SeekToLineAsync(rows[2]);
+            Assert.Equal(2, player.SeekRequests.Count);
+            Assert.Single(lyrics.Requests);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public async Task LateLyricsCannotReplaceTheNewTrackAfterSwitchingOrLeavingTheView()
     {

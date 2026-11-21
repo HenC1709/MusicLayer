@@ -156,7 +156,8 @@ public sealed class NAudioPlayer : IAudioPlayer
                 }
 
                 // Give the new device its own decoder so an outgoing buffer cannot consume the new position.
-                var replacement = new MediaFoundationReader(file);
+                // A paused seek to the end completes on resume without reading from the new decoder.
+                var replacement = OpenReaderAtPosition(file, target == duration ? TimeSpan.Zero : target, cancellationToken);
                 try
                 {
                     ReleaseAudio();
@@ -164,8 +165,6 @@ public sealed class NAudioPlayer : IAudioPlayer
                     currentFile = file;
                     outputStart = target;
                     waitingToResume = paused;
-                    var bytes = (long)(target.TotalSeconds * replacement.WaveFormat.AverageBytesPerSecond);
-                    replacement.Position = bytes - bytes % replacement.BlockAlign;
                     OpenOutput(replacement, play: !paused);
                     return new PlaybackProgress(target, duration);
                 }
@@ -181,6 +180,44 @@ public sealed class NAudioPlayer : IAudioPlayer
                 }
             }
         }, cancellationToken);
+
+    internal static MediaFoundationReader OpenReaderAtPosition(string file, TimeSpan target, CancellationToken cancellationToken)
+    {
+        var source = new MediaFoundationReader(file);
+        try
+        {
+            var bytes = (long)(target.TotalSeconds * source.WaveFormat.AverageBytesPerSecond);
+            var offset = bytes - bytes % source.BlockAlign;
+            if (offset > 0)
+            {
+                // Windows can report a successful FLAC seek while decoding from the start.
+                if (Path.GetExtension(file).Equals(".flac", StringComparison.OrdinalIgnoreCase))
+                    SkipDecodedAudio(source, offset, cancellationToken);
+                else
+                    source.Position = offset;
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+            return source;
+        }
+        catch
+        {
+            source.Dispose();
+            throw;
+        }
+    }
+
+    private static void SkipDecodedAudio(WaveStream source, long remaining, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[64 * 1024];
+        var chunkSize = buffer.Length - buffer.Length % source.BlockAlign;
+        while (remaining > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var read = source.Read(buffer, 0, (int)Math.Min(remaining, chunkSize));
+            if (read == 0) throw new EndOfStreamException("The audio ended before the requested position.");
+            remaining -= read;
+        }
+    }
 
     private void OpenOutput(MediaFoundationReader source, bool play)
     {

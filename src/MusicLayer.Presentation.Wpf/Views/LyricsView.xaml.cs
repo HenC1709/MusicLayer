@@ -52,6 +52,12 @@ public partial class LyricsView : UserControl
         ScrollToActive();
     }
 
+    private async void SeekToVerse(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: LyricRow row } && model is not null)
+            await model.SeekToLineAsync(row);
+    }
+
     private void ManualWheel(object sender, MouseWheelEventArgs e) => FollowButton.Visibility = Visibility.Visible;
     private void ManualTouch(object sender, TouchEventArgs e) => FollowButton.Visibility = Visibility.Visible;
     private void ManualKey(object sender, KeyEventArgs e)

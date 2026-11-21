@@ -55,7 +55,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.setVolume = setVolume;
         this.seek = seek;
         this.coverReader = coverReader;
-        Lyrics = new LyricsViewModel(lyricsProvider);
+        Lyrics = new LyricsViewModel(lyricsProvider, position => RunSeekAsync(_ => seek.ExecuteAsync(position, lifetime.Token)));
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
@@ -279,6 +279,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     }
 
     public Task SeekAsync(double fraction)
+        => RunSeekAsync(duration => seek.ExecuteAsync(fraction, duration, lifetime.Token));
+
+    private Task RunSeekAsync(Func<TimeSpan, Task<PlaybackProgress?>> move)
     {
         if (!IsReady || !CanSeek || progress is not { } current) return Task.CompletedTask;
 
@@ -288,7 +291,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             var version = progressVersion;
             try
             {
-                var snapshot = await seek.ExecuteAsync(fraction, current.Duration, lifetime.Token);
+                var snapshot = await move(current.Duration);
                 if (!closing && version == progressVersion && snapshot is { } position)
                     ApplyProgress(position);
             }

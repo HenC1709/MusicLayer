@@ -74,3 +74,11 @@ La vista **Letras** muestra un aviso breve sobre LRCLIB y la caché local. Los d
 - **Qué cambió.** El tiempo y el verso activo se actualizan al confirmar el salto en ambos sentidos. Si la pista estaba en pausa, conserva ese estado. Al saltar al final mientras suena, finaliza la reproducción. En pausa, el final se confirma al reanudar.
 - **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 99 pruebas xUnit. La prueba WPF comprobó el arrastre, el teclado y la sincronización con un FLAC silenciado. Los saltos repetidos, la pausa y la reanudación también se comprobaron con MP3 y WAV sintéticos.
 - **Pendiente.** Comprobar de oído la precisión de los saltos con canciones reales y comparar la letra sincronizada con el audio. El plan del Sprint 4 continúa con las carátulas de MP3 y WAV.
+
+El reloj podía mostrar la posición del salto mientras Media Foundation devolvía audio del principio en algunos FLAC. MusicLayer ahora prepara el lector FLAC descartando las muestras anteriores al destino. Esto conserva la sincronización con la barra y puede añadir una espera al saltar lejos en archivos largos. Se comprobó el contenido PCM de un FLAC con tres tonos y pasaron 101 pruebas xUnit.
+
+### Salto al pulsar un verso
+
+Cada verso sincronizado conserva su marca LRC. Al pulsarlo, el reproductor salta a ese instante y actualiza la barra y el resaltado. La pista sigue en pausa si ya estaba pausada. Los estribillos repetidos llevan a la aparición elegida, incluso cuando el texto coincide. Las letras planas se pueden seguir leyendo con desplazamiento manual.
+
+Se verificaron los botones en WPF con un FLAC silenciado. Pasaron 103 pruebas xUnit, incluidas las de salto por verso durante la reproducción y en pausa. La interacción con una pantalla táctil física queda pendiente de validación.

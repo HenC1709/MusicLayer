@@ -15,7 +15,8 @@
             </WrapPanel>
             <ListBox x:Name="LinesList" Grid.Row="1" ItemsSource="{Binding Rows}" Background="Transparent"
                      BorderThickness="0" AutomationProperties.Name="Letra sincronizada"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.VirtualizationMode="Recycling"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.PanningMode="VerticalOnly"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
                      PreviewMouseWheel="ManualWheel" PreviewMouseDown="ManualClick" PreviewKeyDown="ManualKey"
                      PreviewTouchMove="ManualTouch">
                 <ListBox.Style>
@@ -34,8 +35,38 @@
                         </Setter>
                     </Style>
                 </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
+                <ListBox.Resources>
+                    <Style x:Key="VerseButton" TargetType="Button">
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Text}" />
+                        <Setter Property="ToolTip" Value="Saltar a este verso" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Surface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="6">
+                                        <ContentPresenter />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource RaisedBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsKeyboardFocused" Value="True">
+                                            <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text}" Value="">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding DataContext.CanSeek, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                    <DataTemplate x:Key="VerseContent">
                         <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="21" Margin="10,5,6,5"
                                    Tag="{DynamicResource {x:Static SystemParameters.ClientAreaAnimationKey}}">
                             <TextBlock.Style>
@@ -78,6 +109,12 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
+                    </DataTemplate>
+                </ListBox.Resources>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{StaticResource VerseButton}" Click="SeekToVerse"
+                                Content="{Binding}" ContentTemplate="{StaticResource VerseContent}" />
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

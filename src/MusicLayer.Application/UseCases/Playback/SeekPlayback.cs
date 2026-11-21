@@ -10,6 +10,9 @@ public sealed class SeekPlayback(IAudioPlayer player)
             return Task.FromResult<PlaybackProgress?>(null);
 
         var position = TimeSpan.FromTicks((long)((decimal)Math.Clamp(fraction, 0, 1) * duration.Ticks));
-        return player.SeekAsync(position, cancellationToken);
+        return ExecuteAsync(position, cancellationToken);
     }
+
+    public Task<PlaybackProgress?> ExecuteAsync(TimeSpan position, CancellationToken cancellationToken = default)
+        => player.SeekAsync(position, cancellationToken);
 }

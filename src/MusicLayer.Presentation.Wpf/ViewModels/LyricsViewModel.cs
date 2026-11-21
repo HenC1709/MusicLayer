@@ -5,9 +5,10 @@ using MusicLayer.Domain.Entities;
 
 namespace MusicLayer.Presentation.Wpf.ViewModels;
 
-public sealed class LyricRow(string text) : INotifyPropertyChanged
+public sealed class LyricRow(TimedLyricLine line) : INotifyPropertyChanged
 {
-    public string Text { get; } = text;
+    public string Text => line.Text;
+    public TimeSpan Start => line.Start;
     public bool IsActive
     {
         get;
@@ -21,7 +22,7 @@ public sealed class LyricRow(string text) : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-public sealed class LyricsViewModel(ILyricsProvider provider) : INotifyPropertyChanged
+public sealed class LyricsViewModel(ILyricsProvider provider, Func<TimeSpan, Task> seekTo) : INotifyPropertyChanged
 {
     private CancellationTokenSource? request;
     private Task pending = Task.CompletedTask;
@@ -57,6 +58,15 @@ public sealed class LyricsViewModel(ILyricsProvider provider) : INotifyPropertyC
         ResetDocument();
     }
 
+    public Task SeekToLineAsync(LyricRow row)
+    {
+        if (closed || !IsOpen || progress is not { } clock || row.Text.Length == 0 ||
+            row.Start >= clock.Duration || !Rows.Contains(row))
+            return Task.CompletedTask;
+
+        return seekTo(row.Start);
+    }
+
     internal void ObserveProgress(PlaybackProgress? snapshot)
     {
         progress = snapshot;
@@ -90,7 +100,7 @@ public sealed class LyricsViewModel(ILyricsProvider provider) : INotifyPropertyC
             var parsed = await Task.Run(() => LyricsDocument.FromLookup(result), source.Token);
             if (request != source || source.IsCancellationRequested) return;
             document = parsed;
-            Rows = parsed.Lines.Select(line => new LyricRow(line.Text)).ToArray();
+            Rows = parsed.Lines.Select(line => new LyricRow(line)).ToArray();
             Notify(nameof(Rows));
             Notify(nameof(PlainText));
             SetStatus(parsed.Kind switch
