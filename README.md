@@ -66,4 +66,4 @@ El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evit
 
 Al importar una carpeta, MusicLayer muestra cuántas canciones encontró. Si la carpeta está vacía o solo contiene otros formatos, **Elegir carpeta** permite probar con otra. Si falla la lectura de la carpeta elegida, la biblioteca anterior sigue disponible. Ante un error de reproducción, **Elegir otra canción** devuelve el foco a la lista para seleccionar una pista con el teclado o el ratón.
 
-Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio.
+Ejecuta `dotnet test MusicLayer.sln` para las pruebas xUnit de dominio, casos de uso, escaneo y estado del ViewModel. La suite actual incluye pruebas de integración con Infrastructure y WPF y requiere Windows. Consulta `docs/SPRINTS.md` para la validación manual del audio,
