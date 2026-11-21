@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using MusicLayer.Presentation.Wpf.ViewModels;
@@ -26,6 +27,7 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
+        TonicLogo.Source = (Icon as BitmapFrame)?.Decoder?.Frames.MaxBy(frame => frame.PixelWidth) ?? Icon;
         this.viewModel = viewModel;
         viewModel.PropertyChanged += OnViewModelChanged;
         DataContext = viewModel;
@@ -160,7 +162,7 @@ public partial class MainWindow : Window
         }
         catch (Exception error)
         {
-            MessageBox.Show(this, $"Error al liberar recursos: {error.Message}", "MusicLayer", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, $"Error al liberar recursos: {error.Message}", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally { canClose = true; Close(); }
     }
