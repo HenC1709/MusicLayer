@@ -3,6 +3,7 @@
 **/obj/
 artifacts/
 Guide/
+docs/
 
 # Local database and user-specific data
 *.db
