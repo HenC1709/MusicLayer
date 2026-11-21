@@ -170,7 +170,7 @@
         <Setter Property="Tag">
             <Setter.Value>
                 <MultiBinding Converter="{StaticResource CurrentRow}">
-                    <Binding Path="(ItemsControl.AlternationIndex)" RelativeSource="{RelativeSource Self}" />
+                    <Binding Path="Index" />
                     <Binding Path="DataContext.CurrentSongIndex" RelativeSource="{RelativeSource AncestorType=ListBox}" />
                 </MultiBinding>
             </Setter.Value>
@@ -200,6 +200,7 @@
                             <Setter TargetName="Row" Property="Background" Value="{StaticResource SelectedBrush}" />
                         </Trigger>
                         <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{StaticResource HoverBrush}" />
                             <Setter TargetName="Marker" Property="Text" Value="●" />
                             <Setter TargetName="Marker" Property="Foreground" Value="{StaticResource AccentBrush}" />
                             <Setter TargetName="Marker" Property="ToolTip" Value="Pista actual" />

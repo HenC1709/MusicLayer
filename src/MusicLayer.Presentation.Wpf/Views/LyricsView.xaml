@@ -129,9 +129,9 @@
                 <TextBlock Text="{Binding PlainText}" TextWrapping="Wrap" FontSize="20" Foreground="{DynamicResource InkBrush}" />
             </ScrollViewer>
             <Border Grid.Row="2" Background="{DynamicResource RaisedBrush}" CornerRadius="8" Padding="10,6" Margin="0,10,0,0"
-                    ToolTip="Si la letra aún no está guardada, se envían a LRCLIB el título, el artista, el álbum y la duración disponibles."
-                    AutomationProperties.HelpText="Si la letra aún no está guardada, se envían a LRCLIB el título, el artista, el álbum y la duración disponibles.">
-                <TextBlock Text="Letras de LRCLIB con caché local"
+                    ToolTip="Primero se lee el archivo LRC junto al audio. Al consultar LRCLIB se envían el título, el artista, el álbum y la duración disponibles."
+                    AutomationProperties.HelpText="Primero se lee el archivo LRC junto al audio. Al consultar LRCLIB se envían el título, el artista, el álbum y la duración disponibles.">
+                <TextBlock Text="Letras locales y de LRCLIB"
                            TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SecondaryBrush}" />
             </Border>
         </Grid>

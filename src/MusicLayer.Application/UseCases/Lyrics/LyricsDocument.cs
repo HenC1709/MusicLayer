@@ -27,11 +27,16 @@ public sealed class LyricsDocument
         if (result.Status != LyricsLookupStatus.Found || result.Record is not { } record)
             return new(LyricsDocumentKind.NotFound);
 
-        var lines = LrcParser.Parse(record.SyncedLyrics);
+        return FromLrc(record.SyncedLyrics, record.PlainLyrics);
+    }
+
+    internal static LyricsDocument FromLrc(string? syncedLyrics, string? plainLyrics = null)
+    {
+        var lines = LrcParser.Parse(syncedLyrics);
         if (lines.Any(line => line.Text.Length > 0))
             return new(LyricsDocumentKind.Synchronized, lines);
-        if (!string.IsNullOrWhiteSpace(record.PlainLyrics))
-            return new(LyricsDocumentKind.Plain, plainText: record.PlainLyrics);
+        if (!string.IsNullOrWhiteSpace(plainLyrics))
+            return new(LyricsDocumentKind.Plain, plainText: plainLyrics);
         return new(LyricsDocumentKind.NotFound);
     }
 

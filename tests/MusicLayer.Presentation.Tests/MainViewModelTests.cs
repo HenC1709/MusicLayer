@@ -4,6 +4,7 @@ using MusicLayer.Application.UseCases.Library;
 using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Domain.Entities;
+using MusicLayer.Infrastructure.Lyrics;
 using MusicLayer.Presentation.Wpf.ViewModels;
 using Xunit;
 
@@ -749,10 +750,42 @@ public sealed class MainViewModelTests
         }
     }
 
-    private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner, ICoverArtReader? covers = null, ILyricsProvider? lyrics = null)
+    [Fact]
+    public async Task LoadsMatchingSidecarWithoutTrackTagsOrAnOnlineLookup()
+    {
+        var folder = Directory.CreateTempSubdirectory();
+        try
+        {
+            var path = Path.Combine(folder.FullName, "Pista de prueba.flac");
+            File.WriteAllBytes(path, []);
+            await File.WriteAllTextAsync(Path.ChangeExtension(path, ".lrc"), "[00:01.25]Frase de prueba");
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, TimeSpan.FromSeconds(30)) };
+            var remote = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path)), lyrics: remote, local: new SidecarLrcReader());
+            await vm.LoadFolderAsync(folder.FullName);
+            await vm.PlayNextAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.Status == "Letra sincronizada");
+            vm.Lyrics.IsOpen = true;
+            await loaded;
+            await vm.Lyrics.SeekToLineAsync(Assert.Single(vm.Lyrics.Rows));
+
+            Assert.Equal(TimeSpan.FromMilliseconds(1250), Assert.Single(player.SeekRequests));
+            Assert.Empty(remote.Requests);
+        }
+        finally { folder.Delete(recursive: true); }
+    }
+
+    private sealed class NoLocalLyrics : ILocalLyricsReader
+    {
+        public Task<string?> ReadAsync(string audioPath, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+    }
+
+    private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner, ICoverArtReader? covers = null,
+        ILyricsProvider? lyrics = null, ILocalLyricsReader? local = null)
         => new(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)),
             new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player), new SetPlaybackVolume(player),
-            covers ?? new FakeCoverReader(_ => null), lyrics ?? new FakeLyrics(), new SeekPlayback(player));
+            covers ?? new FakeCoverReader(_ => null), new LoadTrackLyrics(local ?? new NoLocalLyrics(), lyrics ?? new FakeLyrics()),
+            new SeekPlayback(player));
 
     private sealed class FakeScanner(params Song[] songs) : IMusicFileScanner
     {

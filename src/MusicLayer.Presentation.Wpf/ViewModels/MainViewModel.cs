@@ -4,12 +4,15 @@ using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Library;
+using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Domain.Entities;
 
 namespace MusicLayer.Presentation.Wpf.ViewModels;
 
 public enum NoticeKind { Information, Importing, Imported, FolderError, PlaybackError, Error }
+
+public sealed record SongRow(Song Song, int Index);
 
 public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
@@ -44,7 +47,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
         PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader,
-        ILyricsProvider lyricsProvider, SeekPlayback seek)
+        LoadTrackLyrics loadLyrics, SeekPlayback seek)
     {
         this.player = player;
         this.scanner = scanner;
@@ -55,7 +58,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.setVolume = setVolume;
         this.seek = seek;
         this.coverReader = coverReader;
-        Lyrics = new LyricsViewModel(lyricsProvider, position => RunSeekAsync(_ => seek.ExecuteAsync(position, lifetime.Token)));
+        Lyrics = new LyricsViewModel(loadLyrics, position => RunSeekAsync(_ => seek.ExecuteAsync(position, lifetime.Token)));
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
     }
@@ -76,6 +79,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
     public IReadOnlyList<Song> Songs { get => songs; private set { songs = value; Notify(); } }
+    public IReadOnlyList<SongRow> SongRows { get; private set; } = [];
     public string Status { get; private set; } = "Elige una carpeta con música.";
     public string? StatusDetail { get; private set; }
     public NoticeKind Notice { get; private set; }
@@ -154,6 +158,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         HasImportedFolder = true;
         Notify(nameof(HasImportedFolder));
         Songs = scannedSongs;
+        SongRows = scannedSongs.Select((song, index) => new SongRow(song, index)).ToArray();
+        Notify(nameof(SongRows));
         SelectedIndex = -1;
         if (Songs.Count == 0)
             ShowStatus("La carpeta no contiene audio compatible.");

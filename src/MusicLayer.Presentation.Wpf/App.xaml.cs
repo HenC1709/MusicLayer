@@ -32,6 +32,8 @@ public partial class App : System.Windows.Application
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MusicLayer", "LyricsCache")))
             .AddSingleton<ILyricsProvider>(provider => new CachedLyricsProvider(
                 provider.GetRequiredService<LrclibClient>(), provider.GetRequiredService<ILyricsCache>()))
+            .AddSingleton<ILocalLyricsReader, SidecarLrcReader>()
+            .AddSingleton<LoadTrackLyrics>()
             .AddSingleton<ScanMusicFolder>()
             .AddSingleton<PlaySong>()
             .AddSingleton<PausePlayback>()

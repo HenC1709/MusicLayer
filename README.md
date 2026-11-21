@@ -44,15 +44,19 @@ El siguiente MVP recordará la última carpeta importada y el volumen. Tonic vol
 
 Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop instalada, o ejecuta `dotnet build MusicLayer.sln` con el SDK de .NET 10. La primera restauración descarga las dependencias desde NuGet.
 
-Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana. En **Canciones**, pulsa **Importar carpeta**. Selecciona una fila y pulsa **Reproducir selección**, haz doble clic o presiona **Enter** sobre la fila. El fondo cyan identifica la selección. El punto verde identifica la pista que está sonando o en pausa.
+Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana. En **Canciones**, pulsa **Importar carpeta**. Selecciona una fila y pulsa **Reproducir selección**, haz doble clic o presiona **Enter** sobre la fila. El fondo cyan marca la selección al explorar. La pista que está sonando o en pausa tiene fondo verde oscuro y un punto verde.
 
 Con el reproductor detenido, selecciona un FLAC para ver su carátula en el panel. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si el FLAC carece de imagen o la imagen es ilegible, aparece la ilustración de Tonic.
+
+En **Letras**, una cabecera compacta reúne la miniatura, el título y los datos disponibles de artista y álbum. Los versos ocupan todo el ancho del panel debajo de la cabecera.
 
 Abre **Ahora suena** para ver la pista activa y su cola. El panel muestra título, artista y álbum si están disponibles. Si falta el título, Tonic muestra el nombre del archivo. Todas las vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio.
 
 Abre **Letras** mientras suena una canción o está en pausa. La línea activa aparece en verde y, si Windows tiene las animaciones habilitadas, se desplaza suavemente al entrar. Toca o haz clic en un verso sincronizado para saltar a su comienzo. Si la canción está en pausa, puedes elegir el verso y pulsar **Reanudar** cuando quieras escucharlo. Puedes desplazarte para leer otra parte y pulsar **Seguir línea actual** para volver. Si la letra solo tiene texto, se lee con desplazamiento manual. La vista también indica cuándo una pista es instrumental, cuándo falta la letra y cuándo el servicio está temporalmente indisponible.
 
-Tonic busca letras únicamente mientras **Letras** está abierta. Primero revisa la caché en `%LocalAppData%\MusicLayer\LyricsCache`. Si necesita consultar LRCLIB, usa el título y artista de las etiquetas, junto con el álbum y la duración disponibles. Una letra ya guardada para esa versión se puede leer sin conexión. Al cambiar de canción o de vista, la consulta pendiente se cancela.
+Para usar una letra propia, guarda el archivo `.lrc` en la misma carpeta y con el mismo nombre base que el audio. Por ejemplo, `Canción.flac` y `Canción.lrc`. Tonic lee ese archivo al abrir **Letras**, incluso si el audio carece de etiquetas.
+
+Si falta una letra local válida, Tonic revisa la caché en `%LocalAppData%\MusicLayer\LyricsCache`. Si necesita consultar LRCLIB, usa el título y artista de las etiquetas, junto con el álbum y la duración disponibles. Una letra ya guardada para esa versión se puede leer sin conexión. Al cambiar de canción o de vista, la consulta pendiente se cancela.
 
 Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Antes de la primera reproducción, **Siguiente** inicia la primera canción. Al llegar a un extremo, la dirección que ya no tiene destino se deshabilita.
 
