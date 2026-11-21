@@ -38,6 +38,7 @@ public partial class App : System.Windows.Application
             .AddSingleton<ResumePlayback>()
             .AddSingleton<StopPlayback>()
             .AddSingleton<SetPlaybackVolume>()
+            .AddSingleton<SeekPlayback>()
             .AddSingleton<PlaybackSession>()
             .AddSingleton<MainViewModel>()
             .AddSingleton<MainWindow>()

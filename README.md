@@ -50,7 +50,7 @@ Con el reproductor detenido, selecciona un FLAC para ver su carátula en el pane
 
 Abre **Ahora suena** para ver la pista activa y su cola. El panel muestra título, artista y álbum si están disponibles. Si falta el título, MusicLayer muestra el nombre del archivo. Todas las vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio.
 
-Abre **Letras** mientras suena una canción o está en pausa. La línea activa aparece en verde y sigue la posición del audio. Puedes desplazarte para leer otra parte y pulsar **Seguir línea actual** para volver. Si la letra solo tiene texto, se lee con desplazamiento manual. La vista también indica cuándo una pista es instrumental, cuándo falta la letra y cuándo el servicio está temporalmente indisponible.
+Abre **Letras** mientras suena una canción o está en pausa. La línea activa aparece en verde y, si Windows tiene las animaciones habilitadas, se desplaza suavemente al entrar. Puedes desplazarte para leer otra parte y pulsar **Seguir línea actual** para volver. Si la letra solo tiene texto, se lee con desplazamiento manual. La vista también indica cuándo una pista es instrumental, cuándo falta la letra y cuándo el servicio está temporalmente indisponible.
 
 MusicLayer busca letras únicamente mientras **Letras** está abierta. Primero revisa la caché en `%LocalAppData%\MusicLayer\LyricsCache`. Si necesita consultar LRCLIB, usa el título y artista de las etiquetas, junto con el álbum y la duración disponibles. Una letra ya guardada para esa versión se puede leer sin conexión. Al cambiar de canción o de vista, la consulta pendiente se cancela.
 
@@ -60,7 +60,7 @@ Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. 
 
 Usa **Volumen** para ajustar el sonido de 0 a 100 antes o durante la reproducción. **0** silencia el audio sin detenerlo. El ajuste se mantiene al pausar, reanudar, detener o cambiar de canción. Al volver a abrir MusicLayer, el deslizador empieza en 100. Guardar esta preferencia queda para el Sprint 4.
 
-La **barra de progreso** muestra el tiempo transcurrido y la duración de la canción. Al pausar, el tiempo queda fijo hasta reanudar. La barra vuelve a cero al detener o finalizar, y se actualiza para cada canción nueva. Por ahora, solo muestra la posición.
+Haz clic en la **barra de progreso** o arrastra el control y suéltalo para adelantar o retroceder. También puedes darle foco con **Tab** y usar las flechas. El verso activo se actualiza al aplicar el salto. Si saltas en pausa, pulsa **Reanudar** para continuar desde el nuevo punto. La barra vuelve a cero al detener o finalizar.
 
 El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evita enlaces de sistema de archivos. La decodificación usa los códecs de Media Foundation de Windows.
 

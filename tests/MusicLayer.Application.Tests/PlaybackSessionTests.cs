@@ -116,6 +116,8 @@ public sealed class PlaybackSessionTests
         public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SetVolumeAsync(int percent, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<PlaybackProgress?> GetProgressAsync(CancellationToken cancellationToken = default) => Task.FromResult<PlaybackProgress?>(null);
+        public Task<PlaybackProgress?> SeekAsync(TimeSpan position, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

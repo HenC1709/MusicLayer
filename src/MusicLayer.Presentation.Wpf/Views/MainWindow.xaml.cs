@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -17,12 +18,18 @@ public partial class MainWindow : Window
     };
     private bool closing;
     private bool canClose;
+    private bool draggingSeekThumb;
+    private bool updatingSeekSlider;
+    private bool submittingSeek;
+    private double seekDragStart;
 
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
         this.viewModel = viewModel;
+        viewModel.PropertyChanged += OnViewModelChanged;
         DataContext = viewModel;
+        SyncSeekSlider();
         progressTimer.Tick += RefreshPlaybackProgress;
         progressTimer.Start();
     }
@@ -76,6 +83,66 @@ public partial class MainWindow : Window
     private async void RefreshPlaybackProgress(object? sender, EventArgs e)
         => await viewModel.RefreshPlaybackProgressAsync();
 
+    private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MainViewModel.ProgressFraction)) SyncSeekSlider();
+    }
+
+    private void SyncSeekSlider()
+    {
+        if (draggingSeekThumb || submittingSeek) return;
+        updatingSeekSlider = true;
+        try { SeekSlider.Value = viewModel.ProgressFraction; }
+        finally { updatingSeekSlider = false; }
+    }
+
+    private async void SeekSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!updatingSeekSlider && !draggingSeekThumb && SeekSlider.IsEnabled)
+            await CommitSeekAsync(e.NewValue);
+    }
+
+    private void SeekSliderEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is true)
+        {
+            if (IsLoaded) SyncSeekSlider();
+            return;
+        }
+
+        if (!draggingSeekThumb) return;
+        draggingSeekThumb = false;
+        var slider = (Slider)sender;
+        if (slider.Template?.FindName("PART_Track", slider) is Track track)
+            track.Thumb?.CancelDrag();
+    }
+
+    private void SeekDragStarted(object sender, DragStartedEventArgs e)
+    {
+        draggingSeekThumb = SeekSlider.IsEnabled && !submittingSeek;
+        seekDragStart = SeekSlider.Value;
+    }
+
+    private async void SeekDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        if (!draggingSeekThumb) return;
+        draggingSeekThumb = false;
+        if (e.Canceled || SeekSlider.Value == seekDragStart) SyncSeekSlider();
+        else await CommitSeekAsync(SeekSlider.Value);
+    }
+
+    private async Task CommitSeekAsync(double fraction)
+    {
+        if (submittingSeek) return;
+        submittingSeek = true;
+        try { await viewModel.SeekAsync(fraction); }
+        finally
+        {
+            submittingSeek = false;
+            SyncSeekSlider();
+        }
+    }
+
     protected override async void OnClosing(CancelEventArgs e)
     {
         if (canClose) { base.OnClosing(e); return; }
@@ -85,6 +152,7 @@ public partial class MainWindow : Window
         closing = true;
         progressTimer.Stop();
         progressTimer.Tick -= RefreshPlaybackProgress;
+        viewModel.PropertyChanged -= OnViewModelChanged;
         try
         {
             try { await viewModel.DisposeAsync(); }

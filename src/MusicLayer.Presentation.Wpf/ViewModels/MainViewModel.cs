@@ -20,6 +20,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly ResumePlayback resume;
     private readonly StopPlayback stop;
     private readonly SetPlaybackVolume setVolume;
+    private readonly SeekPlayback seek;
     private readonly ICoverArtReader coverReader;
     private readonly SynchronizationContext context;
     private readonly CancellationTokenSource lifetime = new();
@@ -31,6 +32,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool closing;
     private bool busy;
     private bool changingPlayback;
+    private bool seeking;
     private AudioState audioState;
     private int completionVersion;
     private int progressVersion;
@@ -42,7 +44,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
         PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader,
-        ILyricsProvider lyricsProvider)
+        ILyricsProvider lyricsProvider, SeekPlayback seek)
     {
         this.player = player;
         this.scanner = scanner;
@@ -51,6 +53,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.resume = resume;
         this.stop = stop;
         this.setVolume = setVolume;
+        this.seek = seek;
         this.coverReader = coverReader;
         Lyrics = new LyricsViewModel(lyricsProvider);
         context = SynchronizationContext.Current ?? new SynchronizationContext();
@@ -114,6 +117,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public bool CanPause => IsReady && audioState == AudioState.Playing;
     public bool CanResume => IsReady && audioState == AudioState.Paused;
     public bool CanStop => IsReady && audioState != AudioState.Inactive;
+    public bool CanSeek => !closing && (!busy || seeking) && CurrentSong is not null && progress is { Duration.Ticks: > 0 };
     public double ProgressFraction => progress is { } value
         ? value.Elapsed.TotalSeconds / value.Duration.TotalSeconds
         : 0;
@@ -274,6 +278,24 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         return pendingProgress;
     }
 
+    public Task SeekAsync(double fraction)
+    {
+        if (!IsReady || !CanSeek || progress is not { } current) return Task.CompletedTask;
+
+        seeking = true;
+        return RunTransportAsync(async () =>
+        {
+            var version = progressVersion;
+            try
+            {
+                var snapshot = await seek.ExecuteAsync(fraction, current.Duration, lifetime.Token);
+                if (!closing && version == progressVersion && snapshot is { } position)
+                    ApplyProgress(position);
+            }
+            finally { seeking = false; }
+        });
+    }
+
     private void RefreshCover()
     {
         Notify(nameof(CoverSong));
@@ -332,20 +354,25 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
 
         if (!closing && version == progressVersion)
-        {
-            SetProgress(snapshot);
-            Lyrics.ObserveProgress(snapshot);
-        }
+            ApplyProgress(snapshot);
+    }
+
+    private void ApplyProgress(PlaybackProgress? snapshot)
+    {
+        SetProgress(snapshot);
+        Lyrics.ObserveProgress(snapshot);
     }
 
     private void SetProgress(PlaybackProgress? value)
     {
         if (progress == value) return;
 
+        var couldSeek = CanSeek;
         progress = value;
         Notify(nameof(ProgressFraction));
         Notify(nameof(ElapsedTimeText));
         Notify(nameof(DurationText));
+        if (couldSeek != CanSeek) Notify(nameof(CanSeek));
     }
 
     private static string FormatPlaybackTime(TimeSpan time) => time.TotalHours < 1
@@ -455,6 +482,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Notify(nameof(CanPause));
         Notify(nameof(CanResume));
         Notify(nameof(CanStop));
+        Notify(nameof(CanSeek));
     }
 
     private void Notify([CallerMemberName] string? name = null)

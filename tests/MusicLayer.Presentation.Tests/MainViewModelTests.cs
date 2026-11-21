@@ -559,6 +559,74 @@ public sealed class MainViewModelTests
         finally { File.Delete(path); }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SeekUpdatesTheLyricsInBothDirectionsAndPreservesPlaybackState(bool pause)
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var song = new Song(path, new TrackMetadata("Título", "Artista", null));
+            var duration = TimeSpan.FromSeconds(60);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, duration) };
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(song), lyrics: lyrics);
+            Assert.False(vm.CanSeek);
+            await vm.SeekAsync(0.5);
+            Assert.Empty(player.SeekRequests);
+
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            if (pause) await vm.PauseAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.ActiveLineIndex == 0);
+            Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found,
+                new(1, null, null, null, null, false, null, "[00:00]Inicio\n[00:30]Mitad")));
+            await loaded;
+            var rows = vm.Lyrics.Rows;
+            Assert.True(vm.CanSeek);
+
+            await vm.SeekAsync(0.5);
+            Assert.Equal("00:30", vm.ElapsedTimeText);
+            Assert.True(rows[1].IsActive);
+            await vm.SeekAsync(-1);
+            Assert.Equal("00:00", vm.ElapsedTimeText);
+            Assert.True(rows[0].IsActive);
+            await vm.SeekAsync(double.NaN);
+            Assert.Equal(new[] { TimeSpan.FromSeconds(30), TimeSpan.Zero }, player.SeekRequests);
+            Assert.Equal(!pause, vm.IsPlaying);
+            Assert.Equal(pause, vm.CanResume);
+            Assert.Same(song, vm.CurrentSong);
+            Assert.Same(rows, vm.Lyrics.Rows);
+            Assert.Single(lyrics.Requests);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ClockReadStartedBeforeSeekCannotOverwriteTheNewPosition()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var duration = TimeSpan.FromMinutes(2);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, duration) };
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path)));
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            var oldSample = new TaskCompletionSource<PlaybackProgress?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            player.ReadProgress = _ => oldSample.Task;
+            var refresh = vm.RefreshPlaybackProgressAsync();
+            try { await vm.SeekAsync(0.75); }
+            finally { oldSample.SetResult(new(TimeSpan.Zero, duration)); }
+            await refresh;
+            Assert.Equal(0.75, vm.ProgressFraction);
+            Assert.Equal("01:30", vm.ElapsedTimeText);
+        }
+        finally { File.Delete(path); }
+    }
+
     [Fact]
     public async Task LateLyricsCannotReplaceTheNewTrackAfterSwitchingOrLeavingTheView()
     {
@@ -644,7 +712,7 @@ public sealed class MainViewModelTests
     private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner, ICoverArtReader? covers = null, ILyricsProvider? lyrics = null)
         => new(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)),
             new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player), new SetPlaybackVolume(player),
-            covers ?? new FakeCoverReader(_ => null), lyrics ?? new FakeLyrics());
+            covers ?? new FakeCoverReader(_ => null), lyrics ?? new FakeLyrics(), new SeekPlayback(player));
 
     private sealed class FakeScanner(params Song[] songs) : IMusicFileScanner
     {
@@ -666,6 +734,7 @@ public sealed class MainViewModelTests
         public List<int> VolumesAtStart { get; } = [];
         public Func<int, Task> ApplyVolume { get; init; } = _ => Task.CompletedTask;
         public PlaybackProgress? Progress { get; set; }
+        public List<TimeSpan> SeekRequests { get; } = [];
         public Func<CancellationToken, Task<PlaybackProgress?>>? ReadProgress { get; set; }
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
         public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
@@ -702,6 +771,14 @@ public sealed class MainViewModelTests
 
         public Task<PlaybackProgress?> GetProgressAsync(CancellationToken cancellationToken = default)
             => ReadProgress?.Invoke(cancellationToken) ?? Task.FromResult(Progress);
+
+        public Task<PlaybackProgress?> SeekAsync(TimeSpan position, CancellationToken cancellationToken = default)
+        {
+            SeekRequests.Add(position);
+            if (Progress is { } progress)
+                Progress = progress with { Elapsed = position };
+            return Task.FromResult(Progress);
+        }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

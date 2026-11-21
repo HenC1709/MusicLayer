@@ -64,3 +64,13 @@ Agrega una entrada por cada error, bug o aprendizaje relevante.
 - **Qué cambió.** La pausa conserva la línea y, al reanudar, el resaltado sigue el audio. El lector permite desplazarse manualmente y volver con **Seguir línea actual**. Al cambiar de pista o salir de la vista se cancela la consulta anterior. El texto plano, las pistas instrumentales, la falta de coincidencia y los fallos temporales tienen presentación propia.
 - **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 96 pruebas xUnit. En una ventana WPF con un FLAC de prueba silenciado se verificaron la navegación, la recuperación desde JSON sin acceso al proveedor remoto, el resaltado, el desplazamiento manual, el retorno a la línea activa y la limpieza al detener.
 - **Pendiente.** Validar de oído la sincronía con una canción conocida y una consulta real a LRCLIB. La tarea 6 habilitará adelantar y retroceder el audio desde la barra de progreso.
+
+La vista **Letras** muestra un aviso breve sobre LRCLIB y la caché local. Los detalles de la consulta aparecen al pasar el cursor. El verso activo entra con un deslizamiento y un aumento de opacidad de menos de un tercio de segundo, según la preferencia de animaciones de Windows.
+
+## LRCLIB, tarea 6 — Saltos desde la barra de progreso (2026-11-20)
+
+- **Antes.** La barra mostraba el tiempo transcurrido y la duración. La letra seguía el reloj durante la reproducción normal.
+- **Qué se hizo.** La barra permite saltar con clic, arrastre o teclado. Al arrastrar, el salto se aplica al soltar. NAudio abre una salida y un decodificador en la nueva posición para descartar el audio anterior que estaba en cola. El reloj suma lo reproducido por esa salida a la posición del salto.
+- **Qué cambió.** El tiempo y el verso activo se actualizan al confirmar el salto en ambos sentidos. Si la pista estaba en pausa, conserva ese estado. Al saltar al final mientras suena, finaliza la reproducción. En pausa, el final se confirma al reanudar.
+- **Verificación.** Compilación con 0 errores y 0 advertencias. Pasaron 99 pruebas xUnit. La prueba WPF comprobó el arrastre, el teclado y la sincronización con un FLAC silenciado. Los saltos repetidos, la pausa y la reanudación también se comprobaron con MP3 y WAV sintéticos.
+- **Pendiente.** Comprobar de oído la precisión de los saltos con canciones reales y comparar la letra sincronizada con el audio. El plan del Sprint 4 continúa con las carátulas de MP3 y WAV.

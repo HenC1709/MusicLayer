@@ -309,15 +309,11 @@
                     <DockPanel Margin="0,5,0,0">
                         <TextBlock DockPanel.Dock="Left" Text="{Binding ElapsedTimeText}" Style="{StaticResource Caption}" />
                         <TextBlock DockPanel.Dock="Right" Text="{Binding DurationText}" Style="{StaticResource Caption}" />
-                        <ProgressBar Height="5" Margin="9,0" VerticalAlignment="Center" Minimum="0" Maximum="1"
-                                     AutomationProperties.Name="Progreso de reproducción" Value="{Binding ProgressFraction, Mode=OneWay}">
-                            <ProgressBar.Template><ControlTemplate TargetType="ProgressBar">
-                                <Grid x:Name="PART_Track">
-                                    <Border CornerRadius="2" Background="{StaticResource LibraryBrush}" />
-                                    <Border x:Name="PART_Indicator" CornerRadius="2" Background="{StaticResource AccentBrush}" HorizontalAlignment="Left" />
-                                </Grid>
-                            </ControlTemplate></ProgressBar.Template>
-                        </ProgressBar>
+                        <Slider x:Name="SeekSlider" Style="{StaticResource PlaybackSlider}" Margin="9,0"
+                                Minimum="0" Maximum="1" SmallChange="0.01" LargeChange="0.05" IsMoveToPointEnabled="True"
+                                AutomationProperties.Name="Posición de reproducción" IsEnabled="{Binding CanSeek}"
+                                ValueChanged="SeekSliderChanged" IsEnabledChanged="SeekSliderEnabledChanged"
+                                Thumb.DragStarted="SeekDragStarted" Thumb.DragCompleted="SeekDragCompleted" />
                     </DockPanel>
                 </StackPanel>
                 <DockPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="12,0,0,0"
@@ -325,7 +321,7 @@
                     <Image DockPanel.Dock="Left" Source="{StaticResource Volume}" Width="20" Margin="0,0,6,0" />
                     <TextBlock DockPanel.Dock="Right" MinWidth="32" TextAlignment="Right" Style="{StaticResource Caption}"
                                Text="{Binding VolumePercent, StringFormat={}{0}%}" />
-                    <Slider Style="{StaticResource VolumeSlider}" Width="84" Minimum="0" Maximum="100" SmallChange="1" LargeChange="10" VerticalAlignment="Center"
+                    <Slider Style="{StaticResource PlaybackSlider}" Width="84" Minimum="0" Maximum="100" SmallChange="1" LargeChange="10" VerticalAlignment="Center"
                             IsSnapToTickEnabled="True" TickFrequency="1" IsMoveToPointEnabled="True" AutomationProperties.Name="Volumen"
                             Value="{Binding VolumePercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </DockPanel>
