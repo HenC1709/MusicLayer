@@ -25,10 +25,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private readonly SetPlaybackVolume setVolume;
     private readonly SeekPlayback seek;
     private readonly ICoverArtReader coverReader;
+    private readonly IPlaybackPreferencesRepository preferences;
     private readonly SynchronizationContext context;
     private readonly CancellationTokenSource lifetime = new();
     private Task pending = Task.CompletedTask;
     private Task pendingVolume = Task.CompletedTask;
+    private Task pendingVolumeSave = Task.CompletedTask;
     private Task pendingProgress = Task.CompletedTask;
     private Task pendingCover = Task.CompletedTask;
     private string? coverPath;
@@ -47,7 +49,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
         PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader,
-        LoadTrackLyrics loadLyrics, SeekPlayback seek)
+        LoadTrackLyrics loadLyrics, SeekPlayback seek, IPlaybackPreferencesRepository preferences)
     {
         this.player = player;
         this.scanner = scanner;
@@ -58,6 +60,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.setVolume = setVolume;
         this.seek = seek;
         this.coverReader = coverReader;
+        this.preferences = preferences;
         Lyrics = new LyricsViewModel(loadLyrics, position => RunSeekAsync(_ => seek.ExecuteAsync(position, lifetime.Token)));
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
@@ -82,6 +85,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public IReadOnlyList<SongRow> SongRows { get; private set; } = [];
     public string Status { get; private set; } = "Elige una carpeta con música.";
     public string? StatusDetail { get; private set; }
+    public string? PreferencesWarning { get; private set; }
     public NoticeKind Notice { get; private set; }
     public bool HasImportedFolder { get; private set; }
     public bool IsReady => !busy && !closing;
@@ -141,7 +145,38 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
-    public Task LoadFolderAsync(string folder) => RunAsync(async () =>
+    public Task InitializeAsync() => RunAsync(async () =>
+    {
+        PlaybackPreferences saved;
+        try { saved = await preferences.ReadAsync(lifetime.Token); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            WarnAboutPreferences("No se pudieron cargar las preferencias guardadas.");
+            return;
+        }
+
+        if (saved.VolumePercent != appliedVolumePercent)
+        {
+            try
+            {
+                await setVolume.ExecuteAsync(saved.VolumePercent, lifetime.Token);
+                appliedVolumePercent = volumePercent = saved.VolumePercent;
+                Notify(nameof(VolumePercent));
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                WarnAboutPreferences("No se pudo aplicar el volumen guardado.");
+            }
+        }
+
+        lifetime.Token.ThrowIfCancellationRequested();
+        if (saved.LibraryFolder is { } folder)
+            await LoadFolderCoreAsync(folder, restoring: true);
+    });
+
+    public Task LoadFolderAsync(string folder) => RunAsync(() => LoadFolderCoreAsync(folder, restoring: false));
+
+    private async Task LoadFolderCoreAsync(string folder, bool restoring)
     {
         ShowStatus("Buscando archivos MP3, WAV y FLAC…", NoticeKind.Importing);
         IReadOnlyList<Song> scannedSongs;
@@ -152,7 +187,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {
-            ShowStatus("No se pudo leer la carpeta. Comprueba el acceso o elige otra.", NoticeKind.FolderError, error.Message);
+            var message = restoring
+                ? "No se pudo abrir la carpeta guardada. Comprueba el acceso o elige otra."
+                : "No se pudo leer la carpeta. Comprueba el acceso o elige otra.";
+            ShowStatus(message, NoticeKind.FolderError, error.Message);
             return;
         }
         HasImportedFolder = true;
@@ -165,7 +203,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             ShowStatus("La carpeta no contiene audio compatible.");
         else
             ShowStatus(Songs.Count == 1 ? "1 canción encontrada." : $"{Songs.Count} canciones encontradas.", NoticeKind.Imported);
-    });
+
+        if (!restoring)
+            await SavePreferenceAsync(() => preferences.SaveFolderAsync(folder), "No se pudo guardar la carpeta importada.");
+    }
 
     public Task PlaySelectedAsync() => RunTransportAsync(async () =>
     {
@@ -391,15 +432,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private async Task ApplyVolumeChangesAsync()
     {
         // Dragging can produce new values while the audio device handles the previous one.
-        while (!closing && appliedVolumePercent != volumePercent)
+        while (appliedVolumePercent != volumePercent)
         {
             var requested = volumePercent;
             try
             {
-                await setVolume.ExecuteAsync(requested, lifetime.Token);
+                // Apply the last slider value even if the window is already closing.
+                await setVolume.ExecuteAsync(requested);
                 appliedVolumePercent = requested;
+                if (pendingVolumeSave.IsCompleted)
+                    pendingVolumeSave = SaveVolumeChangesAsync();
             }
-            catch (OperationCanceledException) when (closing) { return; }
             catch (Exception error)
             {
                 if (volumePercent != requested) continue;
@@ -408,6 +451,31 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
                 ShowStatus($"No se pudo ajustar el volumen: {error.Message}", NoticeKind.Error);
             }
         }
+    }
+
+    private async Task SaveVolumeChangesAsync()
+    {
+        int applied;
+        do
+        {
+            applied = appliedVolumePercent;
+            await SavePreferenceAsync(() => preferences.SaveVolumeAsync(applied), "No se pudo guardar el volumen.");
+        } while (applied != appliedVolumePercent);
+    }
+
+    private async Task SavePreferenceAsync(Func<Task> save, string warning)
+    {
+        try { await save(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            WarnAboutPreferences(warning);
+        }
+    }
+
+    private void WarnAboutPreferences(string message)
+    {
+        PreferencesWarning = message;
+        Notify(nameof(PreferencesWarning));
     }
 
     private Task RunAsync(Func<Task> action)
@@ -461,7 +529,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         NotifyControls();
         player.PlaybackEnded -= OnPlaybackEnded;
         lifetime.Cancel();
-        try { await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover, Lyrics.CloseAsync()); }
+        try
+        {
+            await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover, Lyrics.CloseAsync());
+            await pendingVolumeSave;
+        }
         finally { lifetime.Dispose(); }
     }
 

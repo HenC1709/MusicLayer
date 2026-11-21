@@ -31,9 +31,16 @@ public partial class MainWindow : Window
         this.viewModel = viewModel;
         viewModel.PropertyChanged += OnViewModelChanged;
         DataContext = viewModel;
+        Loaded += RestorePreferences;
         SyncSeekSlider();
         progressTimer.Tick += RefreshPlaybackProgress;
         progressTimer.Start();
+    }
+
+    private async void RestorePreferences(object sender, RoutedEventArgs e)
+    {
+        Loaded -= RestorePreferences;
+        await viewModel.InitializeAsync();
     }
 
     private async void ChooseFolder(object sender, RoutedEventArgs e)
@@ -164,6 +171,11 @@ public partial class MainWindow : Window
         {
             MessageBox.Show(this, $"Error al liberar recursos: {error.Message}", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-        finally { canClose = true; Close(); }
+        finally
+        {
+            await Dispatcher.Yield();
+            canClose = true;
+            Close();
+        }
     }
 }

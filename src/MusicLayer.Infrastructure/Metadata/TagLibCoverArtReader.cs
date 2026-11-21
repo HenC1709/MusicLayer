@@ -7,7 +7,7 @@ public sealed class TagLibCoverArtReader : ICoverArtReader
 {
     public byte[]? ReadEmbeddedCover(string filePath)
     {
-        if (!string.Equals(Path.GetExtension(filePath), ".flac", StringComparison.OrdinalIgnoreCase))
+        if (Path.GetExtension(filePath).ToLowerInvariant() is not (".flac" or ".mp3" or ".wav"))
             return null;
 
         using var file = TagLib.File.Create(filePath, ReadStyle.None);

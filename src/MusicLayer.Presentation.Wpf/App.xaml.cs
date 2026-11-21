@@ -10,6 +10,7 @@ using MusicLayer.Infrastructure.Audio;
 using MusicLayer.Infrastructure.FileSystem;
 using MusicLayer.Infrastructure.Lyrics;
 using MusicLayer.Infrastructure.Metadata;
+using MusicLayer.Infrastructure.Persistence;
 using MusicLayer.Presentation.Wpf.ViewModels;
 using MusicLayer.Presentation.Wpf.Views;
 
@@ -26,6 +27,7 @@ public partial class App : System.Windows.Application
             .AddSingleton<IMusicFileScanner, MusicFileScanner>()
             .AddSingleton<ITrackMetadataReader, TagLibTrackMetadataReader>()
             .AddSingleton<ICoverArtReader, TagLibCoverArtReader>()
+            .AddSingleton<IPlaybackPreferencesRepository>(_ => new SqlitePlaybackPreferencesRepository())
             .AddSingleton(_ => CreateLyricsHttpClient())
             .AddSingleton<LrclibClient>()
             .AddSingleton<ILyricsCache>(_ => new JsonLyricsCache(Path.Combine(

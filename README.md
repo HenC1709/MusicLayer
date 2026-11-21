@@ -1,6 +1,6 @@
 # Tonic
 
-Reproductor de música de escritorio para Windows, desarrollado en C# con WPF. El proyecto seguirá Clean Architecture y usará SQLite para guardar datos locales.
+Reproductor de música de escritorio para Windows, desarrollado en C# con WPF y organizado en capas. El repositorio de preferencias locales usa SQLite.
 
 ## Alcance del MVP
 
@@ -9,7 +9,7 @@ Reproductor de música de escritorio para Windows, desarrollado en C# con WPF. E
 - Mostrar el nombre del archivo actual y ofrecer controles de volumen y progreso.
 - Mostrar errores de lectura, archivos dañados, carpetas vacías y formatos no admitidos.
 
-Tonic lee el título, artista y álbum incrustados en archivos MP3, WAV y FLAC y muestra la carátula incrustada de los FLAC. La persistencia SQLite forma parte del Sprint 4. Las playlists, el modo aleatorio, repeat, el ecualizador y una versión móvil quedan para después del MVP.
+Tonic lee el título, artista y álbum incrustados en archivos MP3, WAV y FLAC y muestra sus carátulas incrustadas compatibles. La persistencia SQLite forma parte del Sprint 4. Las playlists, el modo aleatorio, repeat, el ecualizador y una versión móvil quedan para después del MVP.
 
 ## Estructura
 
@@ -21,7 +21,7 @@ Tonic lee el título, artista y álbum incrustados en archivos MP3, WAV y FLAC y
 | `MusicLayer.Presentation.Wpf` | Aplicación de escritorio y presentación WPF. |
 | `MusicLayer.Domain.Tests` | Pruebas de reglas de dominio. |
 | `MusicLayer.Application.Tests` | Pruebas de casos de uso. |
-| `MusicLayer.Infrastructure.Tests` | Pruebas de escaneo de archivos. |
+| `MusicLayer.Infrastructure.Tests` | Pruebas de escaneo, audio, metadatos y persistencia local. |
 | `MusicLayer.Presentation.Tests` | Pruebas del ViewModel. |
 
 ## Plan de trabajo
@@ -29,15 +29,15 @@ Tonic lee el título, artista y álbum incrustados en archivos MP3, WAV y FLAC y
 1. **Sprint 1 — Base y primer sonido:** solución, capas, contratos, escaneo de carpetas y reproducción inicial.
 2. **Sprint 2 — Control de reproducción:** cola, pausa, siguiente/anterior, volumen, liberación de recursos y pruebas.
 3. **Sprint 3 — Interfaz y MVP:** ventana WPF, controles, progreso, trabajo fuera del hilo de UI y errores visibles.
-4. **Sprint 4 — Pulido y entrega:** los metadatos ya están disponibles. Quedan las carátulas compatibles de MP3 y WAV, las preferencias en SQLite, su restauración al abrir y la verificación final en Windows.
+4. **Sprint 4 — Pulido y entrega.** Tonic muestra metadatos y carátulas de MP3, WAV y FLAC y guarda sus preferencias en SQLite. Queda la verificación final en Windows.
 
-El siguiente MVP recordará la última carpeta importada y el volumen. Tonic volverá a escanear esa carpeta al abrir para reconstruir la biblioteca en memoria. El plan detallado se mantiene en el archivo local `docs/SPRINTS.md`.
+Tonic recuerda la última carpeta importada correctamente y el volumen. Al abrir, vuelve a escanear esa carpeta y espera a que inicies la reproducción. Si la carpeta se movió o perdió sus permisos, puedes elegir otra. El plan detallado se mantiene en el archivo local `docs/SPRINTS.md`.
 
 ## Decisiones iniciales
 
 - Aplicación de escritorio Windows con WPF y .NET 10.
-- NAudio reproduce el audio. TagLibSharp lee las etiquetas de texto de los formatos compatibles y las carátulas FLAC.
-- La futura base SQLite vivirá en el directorio de datos local de la aplicación, fuera del repositorio.
+- NAudio reproduce el audio. TagLibSharp lee las etiquetas de texto de los formatos compatibles y sus carátulas incrustadas.
+- El repositorio de preferencias crea `%LocalAppData%\MusicLayer\preferences.db` en su primera operación. Usa `Microsoft.Data.Sqlite` desde Infrastructure.
 - Domain y Application no dependerán de WPF, SQLite ni de la implementación concreta del audio.
 
 ## Empezar
@@ -46,7 +46,7 @@ Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop i
 
 Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` para abrir la ventana. En **Canciones**, pulsa **Importar carpeta**. Selecciona una fila y pulsa **Reproducir selección**, haz doble clic o presiona **Enter** sobre la fila. El fondo cyan marca la selección al explorar. La pista que está sonando o en pausa tiene fondo verde oscuro y un punto verde.
 
-Con el reproductor detenido, selecciona un FLAC para ver su carátula en el panel. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si el FLAC carece de imagen o la imagen es ilegible, aparece la ilustración de Tonic.
+Con el reproductor detenido, selecciona un MP3, WAV o FLAC para ver su carátula en el panel. Tonic prefiere la imagen marcada como portada frontal. Si esa etiqueta falta, usa la primera imagen incrustada disponible. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si el archivo carece de imagen compatible o la portada es ilegible, aparece la ilustración de Tonic.
 
 En **Letras**, una cabecera compacta reúne la miniatura, el título y los datos disponibles de artista y álbum. Los versos ocupan todo el ancho del panel debajo de la cabecera.
 
@@ -62,7 +62,7 @@ Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. 
 
 **Detener** corta el audio y libera el archivo, incluso cuando está en pausa. La cola conserva la posición para seguir navegando con **Anterior** y **Siguiente**.
 
-Usa **Volumen** para ajustar el sonido de 0 a 100 antes o durante la reproducción. **0** silencia el audio sin detenerlo. El ajuste se mantiene al pausar, reanudar, detener o cambiar de canción. Al volver a abrir Tonic, el deslizador empieza en 100. Guardar esta preferencia queda para el Sprint 4.
+Usa **Volumen** para ajustar el sonido de 0 a 100 antes o durante la reproducción. **0** silencia el audio sin detenerlo. Tonic recupera el último volumen aplicado al volver a abrir. En el primer arranque, el volumen empieza en 100.
 
 Haz clic en la **barra de progreso** o arrastra el control y suéltalo para adelantar o retroceder. También puedes darle foco con **Tab** y usar las flechas. El verso activo se actualiza al aplicar el salto. Si saltas en pausa, pulsa **Reanudar** para continuar desde el nuevo punto. La barra vuelve a cero al detener o finalizar.
 

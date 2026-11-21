@@ -13,6 +13,123 @@ namespace MusicLayer.Presentation.Tests;
 public sealed class MainViewModelTests
 {
     [Fact]
+    public async Task StartupRestoresTheLibraryAndAppliesMuteBeforeTheFirstPlay()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var player = new FakePlayer();
+            var song = new Song(path);
+            var scanner = new FakeScanner
+            {
+                Scan = folder =>
+                {
+                    Assert.Equal("carpeta guardada", folder);
+                    Assert.Equal(0, player.VolumePercent);
+                    return Task.FromResult<IReadOnlyList<Song>>([song]);
+                }
+            };
+            var settings = new FakePreferences { Saved = new("carpeta guardada", 0) };
+            await using var vm = CreateViewModel(player, scanner, preferences: settings);
+
+            await vm.InitializeAsync();
+
+            Assert.Equal(0, vm.VolumePercent);
+            Assert.Same(song, Assert.Single(vm.Songs));
+            Assert.Null(vm.CurrentSong);
+            Assert.Equal(0, player.PlayCount);
+            Assert.Empty(settings.FolderWrites);
+            Assert.Empty(settings.VolumeWrites);
+            await vm.PlayNextAsync();
+            Assert.Equal([0], player.VolumesAtStart);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task MissingSavedFolderAndFailedImportPreserveThePreviousPreference()
+    {
+        var settings = new FakePreferences { Saved = new("carpeta movida", 40) };
+        var scanner = new FakeScanner
+        {
+            Scan = folder => folder == "carpeta nueva"
+                ? Task.FromResult<IReadOnlyList<Song>>([])
+                : Task.FromException<IReadOnlyList<Song>>(new DirectoryNotFoundException())
+        };
+        await using var vm = CreateViewModel(new FakePlayer(), scanner, preferences: settings);
+
+        await vm.InitializeAsync();
+        Assert.Equal(NoticeKind.FolderError, vm.Notice);
+        Assert.Contains("carpeta guardada", vm.Status);
+        Assert.True(vm.IsReady);
+        Assert.Equal(40, vm.VolumePercent);
+
+        await vm.LoadFolderAsync("otra carpeta ausente");
+        Assert.Empty(settings.FolderWrites);
+        Assert.Equal("carpeta movida", settings.Saved.LibraryFolder);
+
+        await vm.LoadFolderAsync("carpeta nueva");
+        Assert.True(vm.HasImportedFolder);
+        Assert.Empty(vm.Songs);
+        Assert.Equal(["carpeta nueva"], settings.FolderWrites);
+        Assert.Equal(new PlaybackPreferences("carpeta nueva", 40), settings.Saved);
+    }
+
+    [Fact]
+    public async Task PreferenceFailuresLeaveImportVolumeAndPlaybackAvailable()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var player = new FakePlayer();
+            var settings = new FakePreferences { FailAccess = true };
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path)), preferences: settings);
+
+            await vm.InitializeAsync();
+            Assert.Equal(100, vm.VolumePercent);
+            Assert.Contains("cargar", vm.PreferencesWarning);
+
+            await vm.LoadFolderAsync("musica");
+            Assert.Equal(NoticeKind.Imported, vm.Notice);
+            Assert.Contains("carpeta", vm.PreferencesWarning);
+
+            vm.VolumePercent = 35;
+            await vm.PlayNextAsync();
+            Assert.True(vm.IsPlaying);
+            Assert.Equal([35], player.VolumesAtStart);
+            Assert.Contains("volumen", vm.PreferencesWarning);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ClosingDrainsPendingVolumeChangesAndSavesTheLastAppliedValue()
+    {
+        var applying = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var saving = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var player = new FakePlayer { ApplyVolume = percent => percent == 20 ? applying.Task : Task.CompletedTask };
+        var settings = new FakePreferences { BeforeSavingVolume = _ => saving.Task };
+        var vm = CreateViewModel(player, new FakeScanner(), preferences: settings);
+
+        vm.VolumePercent = 20;
+        vm.VolumePercent = 40;
+        vm.VolumePercent = 65;
+        var closing = vm.DisposeAsync().AsTask();
+        try { Assert.False(closing.IsCompleted); }
+        finally { applying.TrySetResult(); }
+        try
+        {
+            await settings.VolumeWriteStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.False(closing.IsCompleted);
+        }
+        finally { saving.TrySetResult(); }
+        await closing.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal([20, 65], player.VolumeRequests);
+        Assert.Equal(65, settings.Saved.VolumePercent);
+    }
+
+    [Fact]
     public async Task LoadFolderShowsSongsAndCount()
     {
         var player = new FakePlayer();
@@ -781,11 +898,41 @@ public sealed class MainViewModelTests
     }
 
     private static MainViewModel CreateViewModel(FakePlayer player, FakeScanner scanner, ICoverArtReader? covers = null,
-        ILyricsProvider? lyrics = null, ILocalLyricsReader? local = null)
+        ILyricsProvider? lyrics = null, ILocalLyricsReader? local = null, IPlaybackPreferencesRepository? preferences = null)
         => new(player, new ScanMusicFolder(scanner), new PlaybackSession(new PlaySong(player)),
             new PausePlayback(player), new ResumePlayback(player), new StopPlayback(player), new SetPlaybackVolume(player),
             covers ?? new FakeCoverReader(_ => null), new LoadTrackLyrics(local ?? new NoLocalLyrics(), lyrics ?? new FakeLyrics()),
-            new SeekPlayback(player));
+            new SeekPlayback(player), preferences ?? new FakePreferences());
+
+    private sealed class FakePreferences : IPlaybackPreferencesRepository
+    {
+        public PlaybackPreferences Saved { get; set; } = new(null, 100);
+        public bool FailAccess { get; init; }
+        public Func<int, Task> BeforeSavingVolume { get; init; } = _ => Task.CompletedTask;
+        public TaskCompletionSource VolumeWriteStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<string> FolderWrites { get; } = [];
+        public List<int> VolumeWrites { get; } = [];
+
+        public Task<PlaybackPreferences> ReadAsync(CancellationToken cancellationToken = default)
+            => FailAccess ? Task.FromException<PlaybackPreferences>(new IOException()) : Task.FromResult(Saved);
+
+        public Task SaveFolderAsync(string folder, CancellationToken cancellationToken = default)
+        {
+            if (FailAccess) return Task.FromException(new IOException());
+            FolderWrites.Add(folder);
+            Saved = Saved with { LibraryFolder = folder };
+            return Task.CompletedTask;
+        }
+
+        public async Task SaveVolumeAsync(int volumePercent, CancellationToken cancellationToken = default)
+        {
+            if (FailAccess) throw new IOException();
+            VolumeWrites.Add(volumePercent);
+            VolumeWriteStarted.TrySetResult();
+            await BeforeSavingVolume(volumePercent);
+            Saved = Saved with { VolumePercent = volumePercent };
+        }
+    }
 
     private sealed class FakeScanner(params Song[] songs) : IMusicFileScanner
     {
