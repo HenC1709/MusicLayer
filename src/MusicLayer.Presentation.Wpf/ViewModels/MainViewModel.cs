@@ -12,7 +12,7 @@ namespace MusicLayer.Presentation.Wpf.ViewModels;
 
 public enum NoticeKind { Information, Importing, Imported, FolderError, PlaybackError, Error }
 
-public sealed record SongRow(Song Song, int Index);
+
 
 public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
@@ -68,6 +68,13 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public LyricsViewModel Lyrics { get; }
+    public LibraryBrowser Library { get; } = new();
+    public string? LibraryFolder { get; private set; }
+    public SongRow? SelectedLibraryRow
+    {
+        get => SelectedIndex >= 0 && SelectedIndex < SongRows.Count ? SongRows[SelectedIndex] : null;
+        set { if (value is not null) SelectedIndex = value.Index; }
+    }
     public int SelectedIndex
     {
         get => selectedIndex;
@@ -75,6 +82,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         {
             if (selectedIndex == value) return;
             selectedIndex = value;
+            Notify(nameof(SelectedLibraryRow));
             Notify();
             RefreshCover();
             Notify(nameof(CanPlaySelected));
@@ -103,6 +111,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         { Album: { } album } => album,
         _ => CoverSong?.FolderName
     };
+    public string CoverAudioDetails => string.Join(" · ", new[]
+    {
+        CoverSong?.Metadata?.AudioBitrate is int bitrate ? $"{bitrate} kb/s" : null,
+        CoverSong?.Metadata?.AudioSampleRate is int hz ? $"{hz / 1000d:0.###} kHz" : null
+    }.OfType<string>());
     public BitmapSource? CoverImage { get; private set; }
     public int CurrentSongIndex => CurrentSong is null ? -1 : session.CurrentIndex ?? -1;
     public bool CanPlaySelected => IsReady && SelectedIndex >= 0 && SelectedIndex < Songs.Count;
@@ -198,6 +211,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Songs = scannedSongs;
         SongRows = scannedSongs.Select((song, index) => new SongRow(song, index)).ToArray();
         Notify(nameof(SongRows));
+        LibraryFolder = folder;
+        Notify(nameof(LibraryFolder));
+        Library.ReplaceRows(SongRows);
         SelectedIndex = -1;
         if (Songs.Count == 0)
             ShowStatus("La carpeta no contiene audio compatible.");
@@ -299,7 +315,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
 
         if (song is not null)
+        {
             SelectedIndex = session.CurrentIndex ?? -1;
+            Library.RecordPlay(song);
+        }
 
         // A short track may finish while the start continuation is still queued.
         if (version == completionVersion)
@@ -351,6 +370,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Notify(nameof(CoverSong));
         Notify(nameof(CoverLabel));
         Notify(nameof(CoverDescription));
+        Notify(nameof(CoverAudioDetails));
         var path = CoverSong?.FilePath;
         if (closing || path == coverPath) return;
         coverPath = path;
@@ -376,14 +396,17 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
-    private static BitmapSource? DecodeCover(byte[]? bytes)
+    internal Task<BitmapSource?> ReadThumbnailAsync(Song song, CancellationToken token)
+        => Task.Run(() => DecodeCover(coverReader.ReadEmbeddedCover(song.FilePath), 72), token);
+
+    private static BitmapSource? DecodeCover(byte[]? bytes, int width = 640)
     {
         if (bytes is not { Length: > 0 }) return null;
         using var stream = new MemoryStream(bytes, writable: false);
         var image = new BitmapImage();
         image.BeginInit();
         image.CacheOption = BitmapCacheOption.OnLoad;
-        image.DecodePixelWidth = 640;
+        image.DecodePixelWidth = width;
         image.StreamSource = stream;
         image.EndInit();
         image.Freeze();
@@ -425,7 +448,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         if (couldSeek != CanSeek) Notify(nameof(CanSeek));
     }
 
-    private static string FormatPlaybackTime(TimeSpan time) => time.TotalHours < 1
+    internal static string FormatPlaybackTime(TimeSpan time) => time.TotalHours < 1
         ? time.ToString(@"mm\:ss")
         : FormattableString.Invariant($@"{(long)time.TotalHours}:{time:mm\:ss}");
 

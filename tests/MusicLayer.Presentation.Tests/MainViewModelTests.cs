@@ -13,6 +13,35 @@ namespace MusicLayer.Presentation.Tests;
 public sealed class MainViewModelTests
 {
     [Fact]
+    public async Task FilteredLibraryPlaysTheOriginalQueueEntryAndKeepsSessionViewsConsistent()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var first = new Song("first.flac", new("Zeta", "Norte", "Uno"));
+            var second = new Song(path, new("Alba", "Sur", "Dos") { Genre = "Jazz" });
+            await using var vm = CreateViewModel(new FakePlayer(), new FakeScanner(first, second));
+            await vm.LoadFolderAsync("música");
+            vm.Library.Section = "Géneros";
+            vm.Library.Group = Assert.Single(vm.Library.Groups);
+            vm.Library.SearchText = "SUR";
+            var row = Assert.Single(vm.Library.Rows);
+            vm.SelectedLibraryRow = row;
+            await vm.PlaySelectedAsync();
+            Assert.Same(second, vm.CurrentSong);
+            Assert.Equal(1, vm.CurrentSongIndex);
+            vm.Library.SearchText = "";
+            row.IsFavorite = true;
+            vm.Library.Section = "Favoritas";
+            Assert.Same(row, Assert.Single(vm.Library.Rows));
+            row.IsFavorite = false;
+            Assert.Empty(vm.Library.Rows);
+            vm.Library.Section = "Recientes";
+            Assert.Same(row, Assert.Single(vm.Library.Rows));
+        }
+        finally { File.Delete(path); }
+    }
+    [Fact]
     public async Task StartupRestoresTheLibraryAndAppliesMuteBeforeTheFirstPlay()
     {
         var path = Path.GetTempFileName();
@@ -628,6 +657,43 @@ public sealed class MainViewModelTests
     private sealed class FakeCoverReader(Func<string, byte[]?> read) : ICoverArtReader
     {
         public byte[]? ReadEmbeddedCover(string filePath) => read(filePath);
+    }
+
+    [Fact]
+    public async Task SeekingMovesTheLyricEmphasisAndClearsItDuringAnInstrumentalGap()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var tags = new TrackMetadata("Título", "Artista", null);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, TimeSpan.FromMinutes(1)) };
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path, tags)), lyrics: lyrics);
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.Status == "Letra sincronizada");
+            Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found, new(1, null, null, null,
+                null, false, null, "[00:02]Inicio\n[00:08]Dos\n[00:15]Tres\n[00:23]Cuatro\n[00:30]\n[00:45]Final")));
+            await loaded;
+            var rows = vm.Lyrics.Rows;
+            Assert.All(rows, row => Assert.Equal(LyricEmphasis.Distant, row.Emphasis));
+
+            await vm.Lyrics.SeekToLineAsync(rows[2]);
+            Assert.Equal(LyricEmphasis.Active, rows[2].Emphasis);
+            Assert.Equal(LyricEmphasis.Nearby, rows[1].Emphasis);
+            Assert.Equal(LyricEmphasis.Nearby, rows[3].Emphasis);
+
+            await vm.Lyrics.SeekToLineAsync(rows[0]);
+            Assert.Equal(LyricEmphasis.Active, rows[0].Emphasis);
+            Assert.Equal(LyricEmphasis.Nearby, rows[1].Emphasis);
+            Assert.All(rows.Skip(2), row => Assert.Equal(LyricEmphasis.Distant, row.Emphasis));
+
+            await vm.SeekAsync(0.5);
+            Assert.Equal(-1, vm.Lyrics.ActiveLineIndex);
+            Assert.All(rows, row => Assert.Equal(LyricEmphasis.Distant, row.Emphasis));
+        }
+        finally { File.Delete(path); }
     }
 
     [Fact]

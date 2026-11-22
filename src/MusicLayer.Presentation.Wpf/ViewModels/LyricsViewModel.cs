@@ -5,18 +5,23 @@ using MusicLayer.Domain.Entities;
 
 namespace MusicLayer.Presentation.Wpf.ViewModels;
 
+public enum LyricEmphasis { Distant, Nearby, Active }
+
 public sealed class LyricRow(TimedLyricLine line) : INotifyPropertyChanged
 {
     public string Text => line.Text;
     public TimeSpan Start => line.Start;
-    public bool IsActive
+    public bool IsActive => Emphasis == LyricEmphasis.Active;
+    public LyricEmphasis Emphasis
     {
         get;
         internal set
         {
             if (field == value) return;
+            var wasActive = IsActive;
             field = value;
-            PropertyChanged?.Invoke(this, new(nameof(IsActive)));
+            PropertyChanged?.Invoke(this, new(nameof(Emphasis)));
+            if (wasActive != IsActive) PropertyChanged?.Invoke(this, new(nameof(IsActive)));
         }
     }
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -36,6 +41,7 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
     public event PropertyChangedEventHandler? PropertyChanged;
     public IReadOnlyList<LyricRow> Rows { get; private set; } = [];
     public string? PlainText => document?.PlainText;
+    public bool HasLyrics => Rows.Count > 0 || PlainText is not null;
     public string Status { get; private set; } = "Reproduce una canción para ver su letra.";
     public int ActiveLineIndex { get; private set; } = -1;
     public bool IsOpen
@@ -95,6 +101,7 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
             Rows = parsed.Lines.Select(line => new LyricRow(line)).ToArray();
             Notify(nameof(Rows));
             Notify(nameof(PlainText));
+            Notify(nameof(HasLyrics));
             SetStatus(parsed.Kind switch
             {
                 LyricsDocumentKind.Synchronized => "Letra sincronizada",
@@ -128,6 +135,7 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
         Rows = [];
         Notify(nameof(Rows));
         Notify(nameof(PlainText));
+        Notify(nameof(HasLyrics));
         SetStatus(track is null ? "Reproduce una canción para ver su letra." : "Esperando la reproducción…");
     }
 
@@ -135,10 +143,25 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
     {
         int index = progress is { } clock && document is not null ? document.GetActiveLineIndex(clock.Elapsed) : -1;
         if (ActiveLineIndex == index) return;
-        if (ActiveLineIndex >= 0) Rows[ActiveLineIndex].IsActive = false;
+        var previous = ActiveLineIndex;
         ActiveLineIndex = index;
-        if (index >= 0) Rows[index].IsActive = true;
+        UpdateEmphasisAround(previous);
+        UpdateEmphasisAround(index);
         Notify(nameof(ActiveLineIndex));
+    }
+
+    private void UpdateEmphasisAround(int center)
+    {
+        if (center < 0) return;
+        for (var i = Math.Max(0, center - 1); i <= Math.Min(Rows.Count - 1, center + 1); i++)
+        {
+            Rows[i].Emphasis = Math.Abs(i - ActiveLineIndex) switch
+            {
+                0 => LyricEmphasis.Active,
+                1 when ActiveLineIndex >= 0 => LyricEmphasis.Nearby,
+                _ => LyricEmphasis.Distant
+            };
+        }
     }
 
     private void SetStatus(string value)

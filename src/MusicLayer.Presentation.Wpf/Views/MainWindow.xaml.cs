@@ -32,6 +32,19 @@ public partial class MainWindow : Window
         viewModel.PropertyChanged += OnViewModelChanged;
         DataContext = viewModel;
         Loaded += RestorePreferences;
+        SizeChanged += (_, _) =>
+        {
+            bool compact = ActualWidth < 850;
+            RailColumn.Width = new GridLength(compact ? 62 : Math.Min(236, ActualWidth * .15));
+            Brand.Visibility = FolderInfo.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        };
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key != Key.F || Keyboard.Modifiers != ModifierKeys.Control) return;
+            Library.IsChecked = true;
+            LibraryScreen.FocusSearch();
+            e.Handled = true;
+        };
         SyncSeekSlider();
         progressTimer.Tick += RefreshPlaybackProgress;
         progressTimer.Start();
@@ -55,12 +68,7 @@ public partial class MainWindow : Window
     private void ChooseAnotherSong(object sender, RoutedEventArgs e)
     {
         Library.IsChecked = true;
-        SongList.Focus();
-        var index = Math.Max(0, SongList.SelectedIndex);
-        if (index >= SongList.Items.Count) return;
-        SongList.ScrollIntoView(SongList.Items[index]);
-        SongList.UpdateLayout();
-        (SongList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem)?.Focus();
+        LibraryScreen.FocusSongList();
     }
 
     private async void PlayPrevious(object sender, RoutedEventArgs e)

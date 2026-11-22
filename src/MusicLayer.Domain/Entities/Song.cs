@@ -20,6 +20,7 @@ public sealed record Song
     }
 
     public string FilePath { get; }
+    public string FileFormat => Path.GetExtension(FilePath).TrimStart('.').ToUpperInvariant();
     public TrackMetadata? Metadata { get; }
     public string DisplayName => string.IsNullOrWhiteSpace(Metadata?.Title)
         ? Path.GetFileNameWithoutExtension(FilePath)

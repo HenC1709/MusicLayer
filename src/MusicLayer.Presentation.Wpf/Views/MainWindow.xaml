@@ -6,35 +6,70 @@
         WindowStartupLocation="CenterScreen" UseLayoutRounding="True" FontFamily="Segoe UI" FontSize="14"
         Background="{DynamicResource CanvasBrush}" Foreground="{DynamicResource InkBrush}">
     <Window.Resources>
-        <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <ImageBrush x:Key="LibraryAmbient" ImageSource="../Resources/Art/LibraryAmbient.png" Stretch="Fill" />
+            <Style x:Key="RailLink" TargetType="RadioButton" BasedOn="{StaticResource Nav}">
+                <Setter Property="Margin" Value="0,3" />
+                <Setter Property="ContentTemplate">
+                    <Setter.Value><DataTemplate><StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="18" Width="23" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                        <TextBlock Text="{Binding}" Margin="9,0,0,0" />
+                    </StackPanel></DataTemplate></Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="PrimaryTransport" TargetType="Button" BasedOn="{StaticResource Transport}">
+                <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
+                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+                    <Border x:Name="Circle" Background="#48EDBD" CornerRadius="24" BorderThickness="1" BorderBrush="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Circle" Property="Background" Value="#92FFDB" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Circle" Property="Opacity" Value=".45" /></Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Circle" Property="BorderBrush" Value="White" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate></Setter.Value></Setter>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
     <Grid Background="{StaticResource CanvasBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="56" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <Border Background="{StaticResource RailBrush}" Padding="20,0" BorderThickness="0,0,0,1" BorderBrush="{StaticResource RaisedBrush}">
-            <StackPanel Orientation="Horizontal">
-                <Image x:Name="TonicLogo" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
-                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
-                           Margin="10,0" FontSize="21" FontWeight="SemiBold" />
-            </StackPanel>
-        </Border>
-
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Border Background="{StaticResource PanelBrush}" Padding="10,22">
-                <StackPanel>
-                    <TextBlock Text="Biblioteca" Style="{StaticResource Caption}" Margin="12,0,0,10" />
-                    <RadioButton x:Name="Library" Content="Canciones" GroupName="Screen" Style="{StaticResource Nav}" IsChecked="True" />
-                    <RadioButton x:Name="NowPlaying" Content="Ahora suena" GroupName="Screen" Style="{StaticResource Nav}" Margin="0,3,0,0" />
-                    <RadioButton x:Name="LyricsTab" Content="Letras" GroupName="Screen" Style="{StaticResource Nav}" Margin="0,3,0,0"
-                                 IsChecked="{Binding Lyrics.IsOpen, Mode=TwoWay}" />
-                </StackPanel>
+        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="178" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border Background="#0C171F" BorderBrush="#304047" BorderThickness="0,0,1,0" Padding="8,16" ClipToBounds="True">
+                <DockPanel LastChildFill="False">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="7,5,0,36">
+                        <Image x:Name="TonicLogo" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock x:Name="Brand" Text="Tonic" FontSize="22" Margin="9,0,0,0" FontWeight="Bold" />
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <RadioButton x:Name="Library" Content="Biblioteca" Tag="&#xE8F1;" ToolTip="Biblioteca" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="True" />
+                        <RadioButton x:Name="NowPlaying" Content="Reproducción" Tag="&#xE768;" ToolTip="Reproducción" GroupName="Screen" Style="{StaticResource RailLink}" />
+                        <RadioButton x:Name="LyricsTab" Content="Letras" Tag="&#xE8A4;" ToolTip="Letras" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="{Binding Lyrics.IsOpen, Mode=TwoWay}" />
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" x:Name="FolderInfo" Margin="10,5">
+                        <TextBlock Text="Carpeta de música" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding LibraryFolder, TargetNullValue=Sin carpeta}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LibraryFolder}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </DockPanel>
             </Border>
-            <Grid Grid.Column="1" Margin="20,16,20,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid Background="{StaticResource LibraryAmbient}">
+                    <Grid.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></Grid.Resources>
+                    <Grid.Style><Style TargetType="Grid"><Style.Triggers>
+                        <DataTrigger Binding="{Binding IsChecked, ElementName=Library}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                    </Style.Triggers></Style></Grid.Style>
+                    <views:LibraryView x:Name="LibraryScreen" ImportRequested="ChooseFolder" />
+                </Grid>
+                <Grid Margin="20,16,20,6">
+                    <Grid.Style><Style TargetType="Grid"><Style.Triggers>
+                        <DataTrigger Binding="{Binding IsChecked, ElementName=Library}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                    </Style.Triggers></Style></Grid.Style>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <DockPanel Margin="0,0,0,14">
                     <Button DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center"
                             Click="ChooseFolder" IsEnabled="{Binding IsReady}" AutomationProperties.Name="Importar carpeta"
@@ -239,7 +274,8 @@
                         </Grid>
                     </Border>
                 </Grid>
-                <Border Grid.Row="2" Margin="0,6,0,0" CornerRadius="8">
+                </Grid>
+                <Border Grid.Row="1" Margin="16,0,16,4" CornerRadius="8">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Padding" Value="3,2" />
@@ -295,8 +331,7 @@
                 </Border>
             </Grid>
         </Grid>
-
-        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" Padding="16,11"
+        <Border Grid.Row="1" Background="#0B1820" Padding="16,11"
                 BorderThickness="0,1,0,0" BorderBrush="{StaticResource LibraryBrush}">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -315,7 +350,7 @@
                     </Image>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding CurrentSong.DisplayName, FallbackValue=Sin pista activa}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding PlaybackLabel}" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding CurrentSong.Metadata.Artist, FallbackValue='', TargetNullValue=''}" Style="{StaticResource Caption}" />
                     </StackPanel>
                 </DockPanel>
                 <StackPanel Grid.Column="1">
@@ -323,23 +358,23 @@
                         <Button Style="{StaticResource Transport}" Click="PlayPrevious" ToolTip="Anterior" IsEnabled="{Binding CanPrevious}">
                             <Image Source="{StaticResource Back}" Width="18" />
                         </Button>
-                        <Button Style="{StaticResource Transport}" Click="TogglePlayback" ToolTip="{Binding TransportLabel}"
-                                IsEnabled="{Binding CanTogglePlayback}" Width="44" Background="{StaticResource HoverBrush}"
+                        <Button Style="{StaticResource PrimaryTransport}" Click="TogglePlayback" ToolTip="{Binding TransportLabel}"
+                                IsEnabled="{Binding CanTogglePlayback}"
                                 BorderBrush="{StaticResource AccentBrush}">
                             <Grid>
-                                <Path Data="M 1,0 L 15,8 L 1,16 Z" Fill="{StaticResource InkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path Data="M 1,0 L 15,8 L 1,16 Z" Fill="#092A26" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Path.Style><Style TargetType="Path"><Style.Triggers>
                                         <DataTrigger Binding="{Binding IsPlaying}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                                     </Style.Triggers></Style></Path.Style>
                                 </Path>
-                                <Image Source="{StaticResource Pause}" Width="18">
-                                    <Image.Style><Style TargetType="Image">
+                                <Path Data="M 0,0 h5 v16 h-5 Z M 9,0 h5 v16 h-5 Z" Fill="#092A26">
+                                    <Path.Style><Style TargetType="Path">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers><DataTrigger Binding="{Binding IsPlaying}" Value="True">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger></Style.Triggers>
-                                    </Style></Image.Style>
-                                </Image>
+                                    </Style></Path.Style>
+                                </Path>
                             </Grid>
                         </Button>
                         <Button Style="{StaticResource Transport}" Click="PlayNext" ToolTip="Siguiente" IsEnabled="{Binding CanNext}">
