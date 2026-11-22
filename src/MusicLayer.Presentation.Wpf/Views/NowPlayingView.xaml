@@ -1,0 +1,194 @@
+<UserControl x:Class="MusicLayer.Presentation.Wpf.Views.NowPlayingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             SizeChanged="ResizeView">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
+                <ResourceDictionary Source="../Resources/LibraryTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="OptionalMetadata" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                <Style.Triggers>
+                    <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="QueueRow" TargetType="ListBoxItem" BasedOn="{StaticResource SongRow}">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" />
+            <Style x:Key="TrackFavorite" TargetType="ToggleButton">
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="ToolTip" Value="Marcar como favorita" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Frame" Background="#B310242C" BorderBrush="#425A61"
+                                    BorderThickness="1" CornerRadius="9">
+                                <TextBlock x:Name="Heart" Text="&#xEB51;" Style="{StaticResource Glyph}"
+                                           HorizontalAlignment="Center" Foreground="{StaticResource InkBrush}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Heart" Property="Text" Value="&#xEB52;" />
+                                    <Setter TargetName="Heart" Property="Foreground" Value="{StaticResource Mint}" />
+                                    <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Mint}" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Frame" Property="Background" Value="#1A494C" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Frame" Property="BorderBrush" Value="White" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Frame" Property="Opacity" Value=".48" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding CoverRow}" Value="{x:Null}">
+                        <Setter Property="IsEnabled" Value="False" />
+                    </DataTrigger>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="ToolTip" Value="Quitar de favoritas" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid Background="{DynamicResource LibraryAmbient}">
+        <Border Background="#54041117" IsHitTestVisible="False" />
+        <Grid x:Name="Layout" Margin="24,18,24,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <DockPanel x:Name="Header" Margin="0,0,0,16">
+                <Button DockPanel.Dock="Right" Content="Importar carpeta" Click="ImportFolder"
+                        IsEnabled="{Binding IsReady}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource LibraryButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Border Width="3" CornerRadius="2" Background="{StaticResource Mint}" Margin="0,3,13,3" />
+                <TextBlock x:Name="Heading" Text="Reproducción activa" FontSize="26" FontWeight="Bold" />
+            </DockPanel>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition x:Name="Gutter" Width="24" />
+                    <ColumnDefinition x:Name="QueueColumn" Width="*" />
+                </Grid.ColumnDefinitions>
+                <ScrollViewer x:Name="HeroScroll" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <DockPanel>
+                        <Border x:Name="CoverFrame" DockPanel.Dock="Left" Width="240" Height="240"
+                                CornerRadius="21" BorderBrush="#577D80" BorderThickness="1"
+                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <Border.Background>
+                                <ImageBrush ImageSource="{Binding CoverImage, TargetNullValue={StaticResource LibraryArtwork}}"
+                                            Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+                            </Border.Background>
+                        </Border>
+                        <StackPanel x:Name="Details" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CoverLabel}" Foreground="{StaticResource Mint}" FontSize="12" />
+                            <TextBlock x:Name="TrackTitle" Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
+                                       FontSize="34" FontWeight="Bold" TextWrapping="Wrap" LineStackingStrategy="BlockLineHeight"
+                                       ToolTip="{Binding CoverSong.DisplayName}" />
+                            <TextBlock x:Name="Artist" Text="{Binding CoverSong.Metadata.Artist, TargetNullValue='', FallbackValue=''}"
+                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="19"
+                                       Foreground="{StaticResource Muted}" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
+                            <TextBlock Text="{Binding CoverSong.Metadata.Album, TargetNullValue='', FallbackValue=''}"
+                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Style="{StaticResource OptionalMetadata}" />
+                            <WrapPanel Margin="0,4,0,0">
+                                <TextBlock Text="{Binding CoverSong.FileFormat, FallbackValue=''}" Margin="0,0,8,0"
+                                           Foreground="{StaticResource Mint}" FontSize="12" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
+                                <TextBlock Text="{Binding CoverAudioDetails}" Foreground="{StaticResource Muted}" FontSize="12" Style="{StaticResource OptionalMetadata}" />
+                            </WrapPanel>
+                            <WrapPanel x:Name="Actions" Margin="0,14,0,0">
+                                <Button x:Name="PrimaryAction" Content="{Binding TransportLabel}" Click="TogglePlayback" IsEnabled="{Binding CanTogglePlayback}"
+                                        Background="{StaticResource Mint}" Foreground="#092A26" FontWeight="Bold" Margin="0,0,6,4" />
+                                <ToggleButton x:Name="FavoriteAction" Style="{StaticResource TrackFavorite}"
+                                              IsChecked="{Binding CoverRow.IsFavorite, Mode=TwoWay, FallbackValue=False}"
+                                              AutomationProperties.Name="Favorita" Margin="0,0,6,4" />
+                                <Button x:Name="MoreActions" Style="{StaticResource LibraryButton}" Width="36" Padding="0"
+                                        IsEnabled="False" AutomationProperties.Name="Más opciones"
+                                        ToolTip="Más opciones próximamente" ToolTipService.ShowOnDisabled="True" Margin="0,0,6,4">
+                                    <TextBlock Text="&#xE712;" Style="{StaticResource Glyph}" />
+                                </Button>
+                                <Button Content="Letras" Click="OpenLyrics"
+                                        Background="{StaticResource RaisedBrush}" BorderBrush="#385E66" Margin="0,0,0,4" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </DockPanel>
+                </ScrollViewer>
+                <Border x:Name="QueuePanel" Grid.Column="2" Style="{StaticResource Panel}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Margin="2,2,2,9">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Songs.Count}" Style="{StaticResource SmallLabel}"
+                                       AutomationProperties.Name="Número de pistas" Margin="8,0,4,0" />
+                            <TextBlock Text="Cola de reproducción" FontSize="16" FontWeight="SemiBold" />
+                        </DockPanel>
+                        <ListBox x:Name="QueueList" Grid.Row="1" ItemsSource="{Binding SongRows}"
+                                 SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}" Background="Transparent"
+                                 BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource QueueRow}"
+                                 VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 AutomationProperties.Name="Cola de reproducción" MouseDoubleClick="ActivateRow"
+                                 PreviewKeyDown="ActivateRowFromKeyboard">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel ToolTip="{Binding Song.DisplayName}">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding DurationText}" Style="{StaticResource SmallLabel}" Margin="6,0,0,0" />
+                                        <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="5" ClipToBounds="True" Margin="0,0,8,0">
+                                            <Image Stretch="UniformToFill" Loaded="LoadRowArt" Unloaded="UnloadRowArt" DataContextChanged="ChangeRowArt" />
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Song.DisplayName}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Song.Metadata.Artist, TargetNullValue='', FallbackValue=''}" Style="{StaticResource SmallLabel}" />
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="8">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="La cola está vacía" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <Button Content="Importar carpeta" Click="ImportFolder" IsEnabled="{Binding IsReady}"
+                                    Margin="0,8,0,0" HorizontalAlignment="Left" />
+                        </StackPanel>
+                        <Button Grid.Row="2" Click="PlaySelection" IsEnabled="{Binding CanPlaySelected}"
+                                Content="Reproducir selección" HorizontalAlignment="Left" Margin="2,5,0,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

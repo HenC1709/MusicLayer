@@ -1,6 +1,6 @@
 # Relevo del refactor visual de Tonic
 
-**Punto de partida · 22 de noviembre de 2026.** La Biblioteca ya tiene su propia vista WPF. La composición de Letras está implementada. Letras ya tiene composición, seguimiento automático y fondo por carátula. La siguiente entrega visual es **tarea 4 · Reproducción activa**. Trabajar una pantalla por PR y actualizar aquí el estado y las pruebas al cerrarla. La tarea 5 del MVP 4 (entrega y verificación en Windows) sigue su propio calendario.
+**Punto de partida · 22 de noviembre de 2026.** La Biblioteca ya tiene su propia vista WPF. La composición de Letras está implementada. Letras ya tiene composición, seguimiento automático y fondo por carátula. Reproducción activa ya tiene su propia vista. La siguiente entrega visual es **tarea 5 · Menú expandido**. Trabajar una pantalla por PR y actualizar aquí el estado y las pruebas al cerrarla. La tarea 5 del MVP 4 (entrega y verificación en Windows) sigue su propio calendario.
 
 ## Cómo retomar
 
@@ -41,11 +41,24 @@ El verso activo se ilumina palabra por palabra en verde menta a medida que avanz
 
 La solución compiló sin advertencias ni errores y pasaron 121 pruebas. La comprobación WPF verificó el avance durante la reproducción, la pausa, el retroceso y el cambio de verso. También verificó el contraste entre las palabras iluminadas y las pendientes en versos de varios renglones en los tres tamaños de referencia. Capturas en `obj/LyricsKaraokeCheck/run1/`.
 
+## Reproducción activa · implementada (tarea 4)
+
+La vista muestra la carátula y los datos de la pista junto a una cola con miniaturas, artista, duración y un marcador para la pista activa. La cola muestra el orden completo de la sesión y distingue la selección de la pista que está sonando. Enter, el doble clic y «Reproducir selección» activan la fila. En ventana mínima, los datos pasan debajo de la carátula para dar ancho a la cola. Los controles de la vista y la barra inferior comparten la sesión.
+
+Compilación estándar en Windows con cero advertencias y errores. Pasaron 121 pruebas. La comprobación WPF con 12 pistas renderizó la cola vacía y con reproducción en 1586 × 992, 1120 × 720 y 660 × 460. Verificó las miniaturas, la activación con Enter, la pausa, el acceso a Letras y el regreso a Biblioteca con la pista, la selección y la posición al 34 % intactas. Capturas locales en `obj/NowPlayingCheck/final/`.
+
+## Reproducción activa · favorita y más opciones (tarea 4.5)
+
+El corazón junto al control de reproducción marca o quita de Favoritas la pista que muestra la carátula. Usa las mismas favoritas de sesión que Biblioteca. El botón de tres puntos está visible y deshabilitado, con la indicación «Más opciones próximamente».
+
+Compilación limpia y 121 pruebas superadas. La comprobación WPF verificó que el corazón actúa sobre la pista activa aunque haya otra fila seleccionada, que se actualiza desde Biblioteca y al cambiar de pista, y que el botón provisional permanece deshabilitado. Capturas en `obj/NowPlayingActionsCheck/run1/`.
+
+El nuevo logo de Tonic se incorporó al icono compartido por la barra lateral, la ventana y el ejecutable. Se comprobaron la apertura en WPF y la visualización en tamaño mínimo. El archivo ICO incluye seis tamaños de 16 a 256 px.
+
 ## Próximos PR, en orden
 
 | Tarea | Referencia local | Entrega y criterio de aceptación |
 | --- | --- | --- |
-| 4 · Reproducción activa | `Reproduccion-activa.png` | Dar a portada, título y artista el espacio principal y a la cola un panel diferenciado. Reutilizar sesión y barra inferior. Cambiar de pista desde la cola, pausar y volver a Biblioteca debe conservar identidad y posición. Se puede trabajar tras Biblioteca. |
 | 5 · Menú expandido | `MenuNavegacion.png` | Extender la barra lateral de `MainWindow.xaml` con panel expandido, cierre por Escape, retorno del foco y destino activo visible. Verificar teclado y reproducción continua al abrir/cerrar. Añadir los destinos nuevos al estar disponibles. |
 | 6 · Estados y recuperación | `Estados.png` | Traducir importación, biblioteca vacía, archivo ilegible y letra ausente a estados con icono, mensaje y acción pertinente. Provocar cada estado con archivos locales, comprobar recuperación y que el pie siga accesible. Reutilizar `NoticeKind` y estados de Letras. |
 | 7 · Playlists | `PlayList.png` | Acordar primero creación, edición y persistencia. Después construir cuadrícula, tarjetas, estado vacío y detalle. Aceptar al crear una lista, volver a abrirla y reproducir su contenido con el orden acordado. Incorporar el destino al menú. |
@@ -59,4 +72,4 @@ Build en Windows con .NET 10, cero advertencias y cero errores. Pasaron 121 prue
 
 - Compilar con `dotnet build MusicLayer.sln` y ejecutar `dotnet test MusicLayer.sln` en Windows con .NET 10. Abrir con `dotnet run --project src/MusicLayer.Presentation.Wpf`.
 - Para cada PR, comparar capturas con su PNG en escritorio amplio, tamaño inicial (1120 × 720) y tamaño mínimo (660 × 460). Registrar los estados realmente probados y cualquier diferencia pendiente. Usar pistas de prueba o propias al publicar capturas.
-- Antes de cerrar el MVP 4 queda probar desde un clon limpio, validar salida de audio física y DPI alto, y preparar capturas finales para el README. La siguiente tarea visual es Reproducción activa.
+- Antes de cerrar el MVP 4 queda probar desde un clon limpio, validar salida de audio física y DPI alto, y preparar capturas finales para el README. La siguiente tarea visual es el menú expandido.

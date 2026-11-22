@@ -10,7 +10,7 @@ namespace MusicLayer.Presentation.Wpf.Views;
 
 public partial class LibraryView : UserControl
 {
-    private readonly SemaphoreSlim thumbnailSlots = new(3);
+    private readonly SongThumbnailLoader thumbnails = new();
     private readonly List<string> history = ["Canciones"];
     private int historyIndex;
     private bool navigating;
@@ -137,38 +137,11 @@ public partial class LibraryView : UserControl
     }
 
     private void LoadRowArt(object sender, RoutedEventArgs e) => RefreshThumbnail((Image)sender);
-    private void UnloadRowArt(object sender, RoutedEventArgs e) => ResetThumbnail((Image)sender);
+    private void UnloadRowArt(object sender, RoutedEventArgs e) => SongThumbnailLoader.Reset((Image)sender);
     private void ChangeRowArt(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (sender is Image { IsLoaded: true } image) RefreshThumbnail(image);
     }
 
-    private static void ResetThumbnail(Image image)
-    {
-        (image.Tag as CancellationTokenSource)?.Cancel();
-        image.Tag = null;
-        image.Source = null;
-    }
-
-    private async void RefreshThumbnail(Image image)
-    {
-        ResetThumbnail(image);
-        if (image.DataContext is not SongRow row || Model is not { } model) return;
-        image.Source = (BitmapSource)Resources["LibraryArtwork"];
-        using var request = new CancellationTokenSource();
-        image.Tag = request;
-        try
-        {
-            await thumbnailSlots.WaitAsync(request.Token);
-            try
-            {
-                var art = await model.ReadThumbnailAsync(row.Song, request.Token);
-                if (!request.IsCancellationRequested && art is not null) image.Source = art;
-            }
-            finally { thumbnailSlots.Release(); }
-        }
-        catch (OperationCanceledException) when (request.IsCancellationRequested) { }
-        catch (Exception) { /* An unreadable embedded picture keeps the fallback artwork. */ }
-        finally { if (image.Tag == request) image.Tag = null; }
-    }
+    private void RefreshThumbnail(Image image) => thumbnails.Refresh(image, Model, (ImageSource)Resources["LibraryArtwork"]);
 }

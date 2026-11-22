@@ -103,6 +103,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         private set { field = value; Lyrics.ChangeTrack(value); RefreshCover(); }
     }
     public Song? CoverSong => CurrentSong ?? (SelectedIndex >= 0 && SelectedIndex < Songs.Count ? Songs[SelectedIndex] : null);
+    public SongRow? CoverRow => CurrentSong is { } song
+        ? SongRows.FirstOrDefault(row => StringComparer.OrdinalIgnoreCase.Equals(row.Song.FilePath, song.FilePath))
+        : SelectedLibraryRow;
     public string CoverLabel => CurrentSong is null && CoverSong is not null ? "Selección" : PlaybackLabel;
     public string? CoverDescription => CoverSong?.Metadata switch
     {
@@ -217,6 +220,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Notify(nameof(LibraryFolder));
         Library.ReplaceRows(SongRows);
         SelectedIndex = -1;
+        Notify(nameof(CoverRow));
         if (Songs.Count == 0)
             ShowStatus("La carpeta no contiene audio compatible.");
         else
@@ -370,6 +374,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private void RefreshCover()
     {
         Notify(nameof(CoverSong));
+        Notify(nameof(CoverRow));
         Notify(nameof(CoverLabel));
         Notify(nameof(CoverDescription));
         Notify(nameof(CoverAudioDetails));

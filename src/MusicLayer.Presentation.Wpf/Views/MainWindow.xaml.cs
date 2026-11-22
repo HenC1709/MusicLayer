@@ -62,8 +62,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true) await viewModel.LoadFolderAsync(dialog.FolderName);
     }
 
-    private async void PlaySelected(object sender, RoutedEventArgs e)
-        => await viewModel.PlaySelectedAsync();
+    private void ShowLyrics(object sender, RoutedEventArgs e) => LyricsTab.IsChecked = true;
 
     private void ChooseAnotherSong(object sender, RoutedEventArgs e)
     {
@@ -79,20 +78,6 @@ public partial class MainWindow : Window
 
     private async void TogglePlayback(object sender, RoutedEventArgs e)
         => await viewModel.TogglePlaybackAsync();
-
-    private async void ActivateRow(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton == MouseButton.Left && e.OriginalSource is DependencyObject source &&
-            ItemsControl.ContainerFromElement(SongList, source) is ListBoxItem)
-            await viewModel.PlaySelectedAsync();
-    }
-
-    private async void ActivateRowFromKeyboard(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || !viewModel.CanPlaySelected) return;
-        e.Handled = true;
-        await viewModel.PlaySelectedAsync();
-    }
 
     private async void Stop(object sender, RoutedEventArgs e)
         => await viewModel.StopAsync();

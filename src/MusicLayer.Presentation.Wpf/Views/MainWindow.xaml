@@ -77,168 +77,19 @@
                     </views:LyricsView.Style>
                     <views:LyricsView.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></views:LyricsView.Resources>
                 </views:LyricsView>
-                <Grid Margin="20,16,20,6">
-                    <Grid.Style><Style TargetType="Grid"><Style.Triggers>
-                        <DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                    </Style.Triggers></Style></Grid.Style>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-                <DockPanel Margin="0,0,0,14">
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Click="ChooseFolder" IsEnabled="{Binding IsReady}" AutomationProperties.Name="Importar carpeta"
-                            Background="{StaticResource RaisedBrush}" BorderBrush="{StaticResource LibraryBrush}">
-                        <StackPanel Orientation="Horizontal">
-                            <Image Source="{StaticResource Add}" Width="16" Height="16" Margin="0,0,7,0" />
-                            <TextBlock Text="Importar carpeta" />
-                        </StackPanel>
-                    </Button>
-                    <TextBlock Text="Ahora suena" FontSize="28" FontWeight="SemiBold" />
-                </DockPanel>
-
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition>
-                            <ColumnDefinition.Style>
-                                <Style TargetType="ColumnDefinition">
-                                    <Setter Property="Width" Value="2*" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                        <Setter Property="Width" Value="1.1*" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </ColumnDefinition.Style>
-                        </ColumnDefinition>
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Background="{StaticResource LibraryBrush}" CornerRadius="13" Padding="12">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                    <Setter Property="Grid.Column" Value="2" />
+                <views:NowPlayingView x:Name="NowPlayingScreen" ImportRequested="ChooseFolder" LyricsRequested="ShowLyrics">
+                    <views:NowPlayingView.Style>
+                        <Style TargetType="views:NowPlayingView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger></Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <Grid>
-                            <Grid>
-                                <Grid.Style>
-                                    <Style TargetType="Grid">
-                                        <Style.Triggers><DataTrigger Binding="{Binding Songs.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger></Style.Triggers>
-                                    </Style>
-                                </Grid.Style>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <DockPanel Margin="3,0,3,10">
-                                    <Border DockPanel.Dock="Right" Background="{StaticResource RaisedBrush}" CornerRadius="8" Padding="8,2">
-                                        <TextBlock Text="{Binding Songs.Count}" AutomationProperties.Name="Número de canciones" />
-                                    </Border>
-                                    <TextBlock FontSize="17" FontWeight="SemiBold">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                                <Setter Property="Text" Value="Canciones" />
-                                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                                    <Setter Property="Text" Value="Cola de reproducción" />
-                                                </DataTrigger></Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </DockPanel>
-                                <ListBox x:Name="SongList" Grid.Row="1" Background="Transparent"
-                                         BorderThickness="0" Padding="0" Foreground="{StaticResource InkBrush}"
-                                         AutomationProperties.Name="Canciones en orden de reproducción" ItemsSource="{Binding SongRows}"
-                                         SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}" AlternationCount="2"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.VirtualizationMode="Recycling"
-                                         MouseDoubleClick="ActivateRow" PreviewKeyDown="ActivateRowFromKeyboard"
-                                         ItemContainerStyle="{StaticResource SongRow}">
-                                    <ListBox.Resources>
-                                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" />
-                                    </ListBox.Resources>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel ToolTip="{Binding Song.FilePath}">
-                                                <TextBlock Text="{Binding Song.DisplayName}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding Song.FolderName}" FontSize="12" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                                <Button Grid.Row="2" Content="Reproducir selección" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                        IsEnabled="{Binding CanPlaySelected}" Click="PlaySelected" />
-                            </Grid>
-                            <ScrollViewer VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360"
-                                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                          VerticalContentAlignment="Center" Focusable="False">
-                                <ScrollViewer.Style>
-                                    <Style TargetType="ScrollViewer">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers><DataTrigger Binding="{Binding Songs.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger></Style.Triggers>
-                                    </Style>
-                                </ScrollViewer.Style>
-                                <Border CornerRadius="12" Background="{StaticResource RaisedBrush}" Padding="16">
-                                    <StackPanel>
-                                        <Border Width="32" Height="32" HorizontalAlignment="Left" CornerRadius="8"
-                                                Background="{StaticResource HoverBrush}" Margin="0,0,0,10">
-                                            <Image Width="18" Height="18" Source="{StaticResource Music}" />
-                                        </Border>
-                                        <TextBlock FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                                    <Setter Property="Text" Value="Tu biblioteca está vacía" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasImportedFolder}" Value="True">
-                                                            <Setter Property="Text" Value="Sin canciones compatibles" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Notice}" Value="Importing">
-                                                            <Setter Property="Text" Value="Importando carpeta…" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <TextBlock Text="Elige una carpeta con archivos MP3, WAV o FLAC."
-                                                   Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,10" />
-                                        <Button Content="Elegir carpeta" Click="ChooseFolder" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" />
-                                    </StackPanel>
-                                </Border>
-                            </ScrollViewer>
-                        </Grid>
-                    </Border>
+                            </Style.Triggers>
+                        </Style>
+                    </views:NowPlayingView.Style>
+                </views:NowPlayingView>
 
-                    <Border CornerRadius="13" Background="{StaticResource RaisedBrush}" Padding="16">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Grid.Column" Value="2" />
-                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                    <Setter Property="Grid.Column" Value="0" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger></Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" /><RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="{Binding CoverLabel}" Style="{StaticResource Caption}" />
-                            <Image Grid.Row="1" Source="{Binding CoverImage, TargetNullValue={StaticResource Cover}}" Margin="0,16" Stretch="Uniform"
-                                   MaxHeight="320" MaxWidth="320" RenderOptions.BitmapScalingMode="HighQuality" />
-                            <TextBlock Grid.Row="2" FontSize="21" FontWeight="SemiBold"
-                                       Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
-                                       ToolTip="{Binding CoverSong.FilePath}" />
-                            <TextBlock Grid.Row="3" Text="{Binding CoverDescription}" ToolTip="{Binding CoverDescription}"
-                                       Style="{StaticResource Caption}" />
-                        </Grid>
-                    </Border>
-                </Grid>
-                </Grid>
                 <Border Grid.Row="1" Margin="16,0,16,4" CornerRadius="8">
                     <Border.Style>
                         <Style TargetType="Border">
