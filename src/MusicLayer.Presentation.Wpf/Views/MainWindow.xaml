@@ -65,9 +65,21 @@
                     </Style.Triggers></Style></Grid.Style>
                     <views:LibraryView x:Name="LibraryScreen" ImportRequested="ChooseFolder" />
                 </Grid>
+                <views:LyricsView DataContext="{Binding Lyrics}"
+                                  AmbientCover="{Binding DataContext.AmbientCoverImage, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <views:LyricsView.Style>
+                        <Style TargetType="views:LyricsView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger></Style.Triggers>
+                        </Style>
+                    </views:LyricsView.Style>
+                    <views:LyricsView.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></views:LyricsView.Resources>
+                </views:LyricsView>
                 <Grid Margin="20,16,20,6">
                     <Grid.Style><Style TargetType="Grid"><Style.Triggers>
-                        <DataTrigger Binding="{Binding IsChecked, ElementName=Library}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                        <DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                     </Style.Triggers></Style></Grid.Style>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                 <DockPanel Margin="0,0,0,14">
@@ -79,45 +91,7 @@
                             <TextBlock Text="Importar carpeta" />
                         </StackPanel>
                     </Button>
-                    <Grid>
-                        <TextBlock FontSize="28" FontWeight="SemiBold">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                    <Setter Property="Text" Value="Tu biblioteca" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                        <Setter Property="Text" Value="Ahora suena" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <Border Background="{StaticResource RaisedBrush}" CornerRadius="13"
-                            Padding="12,8" Margin="0,0,12,0">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <DockPanel>
-                                <Image DockPanel.Dock="Left" Width="48" Height="48" Margin="0,0,12,0"
-                                   Source="{Binding CoverImage, TargetNullValue={StaticResource Cover}}"
-                                   Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding CoverLabel}" Margin="12,0,0,0"
-                                       Style="{StaticResource Caption}" />
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
-                                           FontSize="18" FontWeight="SemiBold" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
-                                    <TextBlock Text="{Binding CoverDescription}" Style="{StaticResource Caption}"
-                                           ToolTip="{Binding CoverDescription}" />
-                                </StackPanel>
-                            </DockPanel>
-                        </Border>
-                    </Grid>
+                    <TextBlock Text="Ahora suena" FontSize="28" FontWeight="SemiBold" />
                 </DockPanel>
 
                 <Grid Grid.Row="1">
@@ -235,17 +209,7 @@
                             </ScrollViewer>
                         </Grid>
                     </Border>
-                    <views:LyricsView Grid.ColumnSpan="3" DataContext="{Binding Lyrics}">
-                        <views:LyricsView.Style>
-                            <Style TargetType="views:LyricsView">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger></Style.Triggers>
-                            </Style>
-                        </views:LyricsView.Style>
-                        <views:LyricsView.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></views:LyricsView.Resources>
-                    </views:LyricsView>
+
                     <Border CornerRadius="13" Background="{StaticResource RaisedBrush}" Padding="16">
                         <Border.Style>
                             <Style TargetType="Border">

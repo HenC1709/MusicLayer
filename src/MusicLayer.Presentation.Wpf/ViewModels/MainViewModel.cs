@@ -117,6 +117,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         CoverSong?.Metadata?.AudioSampleRate is int hz ? $"{hz / 1000d:0.###} kHz" : null
     }.OfType<string>());
     public BitmapSource? CoverImage { get; private set; }
+    // Preserve the current tint until the new artwork read resolves, including a missing cover.
+    public BitmapSource? AmbientCoverImage { get; private set; }
     public int CurrentSongIndex => CurrentSong is null ? -1 : session.CurrentIndex ?? -1;
     public bool CanPlaySelected => IsReady && SelectedIndex >= 0 && SelectedIndex < Songs.Count;
     public bool CanTogglePlayback => CanStop || CanPlaySelected || CanNext;
@@ -376,6 +378,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         coverPath = path;
         CoverImage = null;
         Notify(nameof(CoverImage));
+        if (path is null)
+            SetAmbientCover(null);
         if (pendingCover.IsCompleted)
             pendingCover = LoadCoverAsync();
     }
@@ -392,8 +396,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (path != coverPath) continue;
             CoverImage = image;
             Notify(nameof(CoverImage));
+            SetAmbientCover(image);
             return;
         }
+    }
+
+    private void SetAmbientCover(BitmapSource? image)
+    {
+        AmbientCoverImage = image;
+        Notify(nameof(AmbientCoverImage));
     }
 
     internal Task<BitmapSource?> ReadThumbnailAsync(Song song, CancellationToken token)

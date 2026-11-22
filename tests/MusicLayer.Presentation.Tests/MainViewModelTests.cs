@@ -766,19 +766,31 @@ public sealed class MainViewModelTests
             if (pause) await vm.PauseAsync();
             var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.ActiveLineIndex == 0);
             Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found,
-                new(1, null, null, null, null, false, null, "[00:00]Inicio\n[00:30]Mitad")));
+                new(1, null, null, null, null, false, null, "[00:00]Inicio con luz\n[00:30]Mitad de noche")));
             await loaded;
             var rows = vm.Lyrics.Rows;
             Assert.True(vm.CanSeek);
+            Assert.Equal("Inicio".Length, rows[0].LitTextLength);
+
+            await vm.SeekAsync(0.25);
+            Assert.True(rows[0].IsActive);
+            Assert.Equal("Inicio con".Length, rows[0].LitTextLength);
 
             await vm.SeekAsync(0.5);
             Assert.Equal("00:30", vm.ElapsedTimeText);
             Assert.True(rows[1].IsActive);
+            Assert.Equal(0, rows[0].LitTextLength);
+            Assert.Equal("Mitad".Length, rows[1].LitTextLength);
+            await vm.SeekAsync(0.9);
+            Assert.Equal(rows[1].Text.Length, rows[1].LitTextLength);
             await vm.SeekAsync(-1);
             Assert.Equal("00:00", vm.ElapsedTimeText);
             Assert.True(rows[0].IsActive);
+            Assert.Equal("Inicio".Length, rows[0].LitTextLength);
+            Assert.Equal(0, rows[1].LitTextLength);
             await vm.SeekAsync(double.NaN);
-            Assert.Equal(new[] { TimeSpan.FromSeconds(30), TimeSpan.Zero }, player.SeekRequests);
+            Assert.Equal(new[] { TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(54), TimeSpan.Zero },
+                player.SeekRequests);
             Assert.Equal(!pause, vm.IsPlaying);
             Assert.Equal(pause, vm.CanResume);
             Assert.Same(song, vm.CurrentSong);

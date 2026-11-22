@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Domain.Entities;
@@ -9,9 +10,13 @@ public enum LyricEmphasis { Distant, Nearby, Active }
 
 public sealed class LyricRow(TimedLyricLine line) : INotifyPropertyChanged
 {
+    private readonly int[] wordEnds = Regex.Matches(line.Text, @"\S+")
+        .Select(word => word.Index + word.Length).ToArray();
+
     public string Text => line.Text;
     public TimeSpan Start => line.Start;
     public bool IsActive => Emphasis == LyricEmphasis.Active;
+    public int LitTextLength { get; private set; }
     public LyricEmphasis Emphasis
     {
         get;
@@ -25,6 +30,20 @@ public sealed class LyricRow(TimedLyricLine line) : INotifyPropertyChanged
         }
     }
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    internal void SetWordProgress(double? fraction)
+    {
+        var length = 0;
+        if (fraction is { } progress && wordEnds.Length > 0)
+        {
+            var wordIndex = Math.Min((int)(progress * wordEnds.Length), wordEnds.Length - 1);
+            length = wordEnds[wordIndex];
+        }
+
+        if (LitTextLength == length) return;
+        LitTextLength = length;
+        PropertyChanged?.Invoke(this, new(nameof(LitTextLength)));
+    }
 }
 
 public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, Task> seekTo) : INotifyPropertyChanged
@@ -141,13 +160,30 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
 
     private void UpdateActiveLine()
     {
-        int index = progress is { } clock && document is not null ? document.GetActiveLineIndex(clock.Elapsed) : -1;
-        if (ActiveLineIndex == index) return;
+        var clock = progress.GetValueOrDefault();
+        int index = progress is not null && document is not null ? document.GetActiveLineIndex(clock.Elapsed) : -1;
         var previous = ActiveLineIndex;
-        ActiveLineIndex = index;
-        UpdateEmphasisAround(previous);
-        UpdateEmphasisAround(index);
-        Notify(nameof(ActiveLineIndex));
+        if (previous != index)
+        {
+            if (previous >= 0) Rows[previous].SetWordProgress(null);
+            ActiveLineIndex = index;
+            UpdateEmphasisAround(previous);
+            UpdateEmphasisAround(index);
+        }
+
+        if (index >= 0)
+        {
+            var row = Rows[index];
+            var end = index + 1 < Rows.Count && Rows[index + 1].Start < clock.Duration
+                ? Rows[index + 1].Start
+                : clock.Duration;
+            var fraction = end > row.Start
+                ? Math.Clamp((clock.Elapsed - row.Start) / (end - row.Start), 0, 1)
+                : 0d;
+            row.SetWordProgress(fraction);
+        }
+
+        if (previous != index) Notify(nameof(ActiveLineIndex));
     }
 
     private void UpdateEmphasisAround(int center)
