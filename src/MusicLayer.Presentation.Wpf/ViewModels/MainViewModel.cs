@@ -37,9 +37,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool closing;
     private bool busy;
     private bool changingPlayback;
+    private bool startingTrack;
+    private bool advanceAfterCompletion;
     private bool seeking;
     private AudioState audioState;
     private int completionVersion;
+    private string? completedFile;
     private int progressVersion;
     private PlaybackProgress? progress;
     private int selectedIndex = -1;
@@ -308,9 +311,11 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         await pendingVolume;
         var version = completionVersion;
         Song? song;
+        startingTrack = true;
         try { song = await start(lifetime.Token); }
         catch (Exception error) when (error is not OperationCanceledException)
         {
+            advanceAfterCompletion = false;
             // A rejected selection can leave the previous track active. Check the actual output.
             await ReadProgressAsync();
             var message = error is FileNotFoundException { FileName: { } path }
@@ -319,6 +324,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             ShowStatus(message, NoticeKind.PlaybackError, error.Message);
             return;
         }
+        finally { startingTrack = false; }
 
         if (song is not null)
         {
@@ -326,9 +332,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             Library.RecordPlay(song);
         }
 
-        // A short track may finish while the start continuation is still queued.
-        if (version == completionVersion)
+        // An outgoing track can finish while the requested replacement is starting.
+        var replacedFinishedTrack = song is not null && completedFile is not null &&
+            !StringComparer.OrdinalIgnoreCase.Equals(completedFile, song.FilePath);
+        if (version == completionVersion || replacedFinishedTrack)
         {
+            advanceAfterCompletion = false;
             if (song is not null)
             {
                 audioState = AudioState.Playing;
@@ -524,19 +533,26 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         return pending;
     }
 
-    private Task RunTransportAsync(Func<Task> action) => RunAsync(async () =>
+    private Task RunTransportAsync(Func<Task> action) => RunAsync(() => ChangePlaybackAsync(action));
+
+    private async Task ChangePlaybackAsync(Func<Task> action)
     {
         changingPlayback = true;
         progressVersion++;
         try { await action(); }
         finally { changingPlayback = false; }
-    });
+    }
 
     private async Task RunCoreAsync(Func<Task> action)
     {
         busy = true;
         NotifyControls();
-        try { await action(); }
+        try
+        {
+            await action();
+            while (!closing && advanceAfterCompletion)
+                await AdvanceAfterCompletionAsync();
+        }
         catch (OperationCanceledException) when (closing) { }
         catch (Exception error) { ShowStatus($"No se pudo completar la operación: {error.Message}", NoticeKind.Error); }
         finally { busy = false; NotifyControls(); }
@@ -545,21 +561,50 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private void OnPlaybackEnded(object? sender, PlaybackEndedEventArgs e)
         => context.Post(_ =>
         {
-            if (!closing)
+            if (closing) return;
+            if (e.Error is null && !startingTrack && CurrentSong is { } current && e.FilePath is { } ended &&
+                !StringComparer.OrdinalIgnoreCase.Equals(current.FilePath, ended))
+                return;
+
+            advanceAfterCompletion = e.Error is null &&
+                (startingTrack || (CurrentSong is not null && session.CurrentIndex is not null));
+            completedFile = e.Error is null ? e.FilePath : null;
+            completionVersion++;
+            progressVersion++;
+            audioState = AudioState.Inactive;
+            CurrentSong = null;
+            SetProgress(null);
+            NotifyControls();
+            if (e.Error is not null)
             {
-                completionVersion++;
-                progressVersion++;
-                audioState = AudioState.Inactive;
-                CurrentSong = null;
-                SetProgress(null);
-                NotifyControls();
-                if (e.Error is not null)
-                    ShowStatus("Se interrumpió la reproducción. Prueba con otra canción o revisa la salida de audio.",
-                        NoticeKind.PlaybackError, e.Error.Message);
-                else if (Notice is not (NoticeKind.Importing or NoticeKind.FolderError or NoticeKind.PlaybackError))
-                    ShowStatus("Reproducción finalizada.");
+                ShowStatus("Se interrumpió la reproducción. Prueba con otra canción o revisa la salida de audio.",
+                    NoticeKind.PlaybackError, e.Error.Message);
+            }
+            else if (!advanceAfterCompletion)
+            {
+                ShowPlaybackFinished();
+            }
+            else if (!busy)
+            {
+                _ = RunAsync(AdvanceAfterCompletionAsync);
             }
         }, null);
+
+    private Task AdvanceAfterCompletionAsync()
+    {
+        advanceAfterCompletion = false;
+        if (session.CurrentIndex is not null && session.HasNext)
+            return ChangePlaybackAsync(() => PlayAsync(session.PlayNextAsync, "No hay una canción siguiente."));
+
+        ShowPlaybackFinished();
+        return Task.CompletedTask;
+    }
+
+    private void ShowPlaybackFinished()
+    {
+        if (Notice is not (NoticeKind.Importing or NoticeKind.FolderError or NoticeKind.PlaybackError))
+            ShowStatus("Reproducción finalizada.");
+    }
 
     public async ValueTask DisposeAsync()
     {

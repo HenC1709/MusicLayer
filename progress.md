@@ -1,6 +1,6 @@
 # Relevo del refactor visual de Tonic
 
-**Punto de partida · 22 de noviembre de 2026.** La Biblioteca ya tiene su propia vista WPF. La composición de Letras está implementada. Letras ya tiene composición, seguimiento automático y fondo por carátula. Reproducción activa ya tiene su propia vista. La siguiente entrega visual es **tarea 5 · Menú expandido**. Trabajar una pantalla por PR y actualizar aquí el estado y las pruebas al cerrarla. La tarea 5 del MVP 4 (entrega y verificación en Windows) sigue su propio calendario.
+**Punto de partida · 22 de noviembre de 2026.** La Biblioteca ya tiene su propia vista WPF. La composición de Letras está implementada. Letras ya tiene composición, seguimiento automático y fondo por carátula. Reproducción activa ya tiene su propia vista. El menú expandido ya está implementado. La siguiente entrega visual es **tarea 6 · Estados y recuperación**. Trabajar una pantalla por PR y actualizar aquí el estado y las pruebas al cerrarla. La tarea 5 del MVP 4 (entrega y verificación en Windows) sigue su propio calendario.
 
 ## Cómo retomar
 
@@ -55,11 +55,20 @@ Compilación limpia y 121 pruebas superadas. La comprobación WPF verificó que 
 
 El nuevo logo de Tonic se incorporó al icono compartido por la barra lateral, la ventana y el ejecutable. Se comprobaron la apertura en WPF y la visualización en tamaño mínimo. El archivo ICO incluye seis tamaños de 16 a 256 px.
 
+## Menú expandido · implementado (tarea 5)
+
+El botón Menú abre un panel sobre la pantalla actual con Biblioteca, Reproducción, Letras e Importar música. La sección activa conserva su indicador y recibe el foco al abrir. Tab y Mayús+Tab recorren el panel. Escape, el botón de cierre y el clic fuera devuelven el foco al botón Menú. La barra inferior sigue accesible con el puntero.
+
+La solución compiló sin advertencias ni errores y pasaron 121 pruebas. La comprobación WPF verificó el foco inicial, el ciclo de teclado, los cierres con retorno de foco, la navegación y la continuidad de la pista y su posición. Las cuatro opciones quedaron visibles a 1586 × 992, 1120 × 720 y 660 × 460. Capturas en `obj/NavigationMenuCheck/final/`.
+
+## Avance automático de la cola · implementado (tarea 5.5)
+
+Al terminar una pista, Tonic inicia la siguiente del orden de reproducción. Al llegar a la última, finaliza la sesión de reproducción. Se probaron con NAudio dos WAV que terminan de forma natural y la detención manual. La solución compiló sin advertencias ni errores y pasaron 124 pruebas, incluidos los casos de fin de pista mientras comienza otra.
+
 ## Próximos PR, en orden
 
 | Tarea | Referencia local | Entrega y criterio de aceptación |
 | --- | --- | --- |
-| 5 · Menú expandido | `MenuNavegacion.png` | Extender la barra lateral de `MainWindow.xaml` con panel expandido, cierre por Escape, retorno del foco y destino activo visible. Verificar teclado y reproducción continua al abrir/cerrar. Añadir los destinos nuevos al estar disponibles. |
 | 6 · Estados y recuperación | `Estados.png` | Traducir importación, biblioteca vacía, archivo ilegible y letra ausente a estados con icono, mensaje y acción pertinente. Provocar cada estado con archivos locales, comprobar recuperación y que el pie siga accesible. Reutilizar `NoticeKind` y estados de Letras. |
 | 7 · Playlists | `PlayList.png` | Acordar primero creación, edición y persistencia. Después construir cuadrícula, tarjetas, estado vacío y detalle. Aceptar al crear una lista, volver a abrirla y reproducir su contenido con el orden acordado. Incorporar el destino al menú. |
 | 8 · Configuración | `Configuracion.png` | Construir la pantalla por grupos de preferencias. Carpeta y volumen ya se guardan en SQLite. Verificar ambos tras reiniciar. Acordar las opciones de tema, letras y continuidad de sesión antes de presentarlas como configurables. |
@@ -72,4 +81,4 @@ Build en Windows con .NET 10, cero advertencias y cero errores. Pasaron 121 prue
 
 - Compilar con `dotnet build MusicLayer.sln` y ejecutar `dotnet test MusicLayer.sln` en Windows con .NET 10. Abrir con `dotnet run --project src/MusicLayer.Presentation.Wpf`.
 - Para cada PR, comparar capturas con su PNG en escritorio amplio, tamaño inicial (1120 × 720) y tamaño mínimo (660 × 460). Registrar los estados realmente probados y cualquier diferencia pendiente. Usar pistas de prueba o propias al publicar capturas.
-- Antes de cerrar el MVP 4 queda probar desde un clon limpio, validar salida de audio física y DPI alto, y preparar capturas finales para el README. La siguiente tarea visual es el menú expandido.
+- Antes de cerrar el MVP 4 queda probar desde un clon limpio, validar salida de audio física y DPI alto, y preparar capturas finales para el README. La siguiente tarea visual es estados y recuperación.

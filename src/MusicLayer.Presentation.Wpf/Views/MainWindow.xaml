@@ -20,6 +20,51 @@
                     </StackPanel></DataTemplate></Setter.Value>
                 </Setter>
             </Style>
+            <Thickness x:Key="MenuRoutePadding">12,8</Thickness>
+            <Style x:Key="MenuRoute" TargetType="Button">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Padding" Value="{DynamicResource MenuRoutePadding}" />
+                <Setter Property="Margin" Value="0,2" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Border x:Name="RouteFrame" CornerRadius="10" Padding="{TemplateBinding Padding}"
+                                        Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="›" FontSize="19" Margin="8,0,0,0"
+                                                   Foreground="{StaticResource SecondaryBrush}" />
+                                        <TextBlock DockPanel.Dock="Left" FontFamily="Segoe MDL2 Assets" FontSize="21"
+                                                   Width="30" Margin="0,0,9,0" Text="{TemplateBinding Tag}" />
+                                        <ContentPresenter VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+                                <Border x:Name="ActiveMark" HorizontalAlignment="Left" Width="3" CornerRadius="2"
+                                        Margin="3,8,0,8" Background="#48EDBD" Visibility="Collapsed" IsHitTestVisible="False" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="RouteFrame" Property="Background" Value="#163439" />
+                                </Trigger>
+                                <Trigger Property="Selector.IsSelected" Value="True">
+                                    <Setter TargetName="RouteFrame" Property="Background" Value="#123936" />
+                                    <Setter TargetName="RouteFrame" Property="BorderBrush" Value="#36736C" />
+                                    <Setter TargetName="ActiveMark" Property="Visibility" Value="Visible" />
+                                    <Setter Property="AutomationProperties.ItemStatus" Value="Sección actual" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="RouteFrame" Property="BorderBrush" Value="{StaticResource InkBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="RouteFrame" Property="Opacity" Value=".45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             <Style x:Key="PrimaryTransport" TargetType="Button" BasedOn="{StaticResource Transport}">
                 <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
                 <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
@@ -39,12 +84,20 @@
         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="178" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Border Background="#0C171F" BorderBrush="#304047" BorderThickness="0,0,1,0" Padding="8,16" ClipToBounds="True">
+            <Border x:Name="NavigationRail" Background="#0C171F" BorderBrush="#304047" BorderThickness="0,0,1,0" Padding="8,16" ClipToBounds="True">
                 <DockPanel LastChildFill="False">
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="7,5,0,36">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="7,5,0,12">
                         <Image x:Name="TonicLogo" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" />
                         <TextBlock x:Name="Brand" Text="Tonic" FontSize="22" Margin="9,0,0,0" FontWeight="Bold" />
                     </StackPanel>
+                    <Button x:Name="NavigationMenuButton" DockPanel.Dock="Top" Click="OpenNavigationMenu" Margin="0,0,0,9"
+                            Padding="8,4" Background="{StaticResource RaisedBrush}" BorderBrush="#304950"
+                            ToolTip="Abrir menú de navegación" AutomationProperties.Name="Abrir menú de navegación">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" FontSize="16" />
+                            <TextBlock x:Name="MenuButtonLabel" Text="Menú" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </Button>
                     <StackPanel DockPanel.Dock="Top">
                         <RadioButton x:Name="Library" Content="Biblioteca" Tag="&#xE8F1;" ToolTip="Biblioteca" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="True" />
                         <RadioButton x:Name="NowPlaying" Content="Reproducción" Tag="&#xE768;" ToolTip="Reproducción" GroupName="Screen" Style="{StaticResource RailLink}" />
@@ -56,7 +109,7 @@
                     </StackPanel>
                 </DockPanel>
             </Border>
-            <Grid Grid.Column="1">
+            <Grid x:Name="ScreenHost" Grid.Column="1">
                 <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid Background="{StaticResource LibraryAmbient}">
                     <Grid.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></Grid.Resources>
@@ -143,6 +196,74 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </StackPanel>
+                </Border>
+            </Grid>
+            <Grid x:Name="NavigationOverlay" Grid.ColumnSpan="2" Visibility="Collapsed">
+                <Border x:Name="NavigationBackdrop" Background="#A9040B11" MouseLeftButtonDown="DismissNavigationBackdrop" />
+                <Border x:Name="NavigationPanel" Width="382" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,12,10,12" Padding="14"
+                        BorderBrush="#345B62" BorderThickness="1" CornerRadius="16"
+                        KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"
+                        AutomationProperties.Name="Menú de navegación">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#112C35" Offset="0" />
+                            <GradientStop Color="#0C1B24" Offset=".36" />
+                            <GradientStop Color="#0D2930" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="3,0,1,9">
+                            <Button x:Name="CloseNavigationButton" DockPanel.Dock="Right" Padding="7,3" Width="34"
+                                    Background="{StaticResource RaisedBrush}" BorderBrush="#34515A" Click="DismissNavigationMenu"
+                                    ToolTip="Cerrar menú (Escape)" AutomationProperties.Name="Cerrar menú">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                            </Button>
+                            <Image DockPanel.Dock="Left" Width="37" Height="37" Margin="0,0,11,0"
+                                   Source="{Binding Source, ElementName=TonicLogo}" RenderOptions.BitmapScalingMode="HighQuality" />
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Tonic" FontSize="22" FontWeight="Bold" />
+                                <TextBlock Text="Menú de navegación" Style="{StaticResource Caption}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                            <ScrollViewer.Resources>
+                                <Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" />
+                            </ScrollViewer.Resources>
+                            <StackPanel>
+                                <Button x:Name="MenuLibrary" Style="{StaticResource MenuRoute}" Tag="&#xE8F1;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=Library, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=Library}" Click="NavigateFromMenu" AutomationProperties.Name="Biblioteca">
+                                    <StackPanel>
+                                        <TextBlock Text="Biblioteca" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Canciones, artistas y álbumes" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuNowPlaying" Style="{StaticResource MenuRoute}" Tag="&#xE768;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=NowPlaying, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=NowPlaying}" Click="NavigateFromMenu" AutomationProperties.Name="Reproducción">
+                                    <StackPanel>
+                                        <TextBlock Text="Reproducción" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Pista actual y cola" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuLyrics" Style="{StaticResource MenuRoute}" Tag="&#xE8A4;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=LyricsTab, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=LyricsTab}" Click="NavigateFromMenu" AutomationProperties.Name="Letras">
+                                    <StackPanel>
+                                        <TextBlock Text="Letras" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Letra de la pista actual" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuImport" Style="{StaticResource MenuRoute}" Tag="&#xE8B7;"
+                                        Click="ImportFromMenu" IsEnabled="{Binding IsReady}" AutomationProperties.Name="Importar música">
+                                    <StackPanel>
+                                        <TextBlock Text="Importar música" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Añade una carpeta con MP3, WAV o FLAC" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
                 </Border>
             </Grid>
         </Grid>

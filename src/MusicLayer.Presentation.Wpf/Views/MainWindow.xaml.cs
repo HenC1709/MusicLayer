@@ -36,15 +36,14 @@ public partial class MainWindow : Window
         {
             bool compact = ActualWidth < 850;
             RailColumn.Width = new GridLength(compact ? 62 : Math.Min(236, ActualWidth * .15));
-            Brand.Visibility = FolderInfo.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+            Brand.Visibility = FolderInfo.Visibility = MenuButtonLabel.Visibility =
+                compact ? Visibility.Collapsed : Visibility.Visible;
+            bool shortWindow = ActualHeight < 530;
+            NavigationPanel.Margin = new Thickness(10, shortWindow ? 10 : 54, 10, 10);
+            var routePadding = shortWindow ? 5 : 8;
+            Resources["MenuRoutePadding"] = new Thickness(12, routePadding, 12, routePadding);
         };
-        PreviewKeyDown += (_, e) =>
-        {
-            if (e.Key != Key.F || Keyboard.Modifiers != ModifierKeys.Control) return;
-            Library.IsChecked = true;
-            LibraryScreen.FocusSearch();
-            e.Handled = true;
-        };
+        PreviewKeyDown += HandleNavigationKeys;
         SyncSeekSlider();
         progressTimer.Tick += RefreshPlaybackProgress;
         progressTimer.Start();
@@ -60,6 +59,63 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFolderDialog { Title = "Elegir carpeta de música" };
         if (dialog.ShowDialog(this) == true) await viewModel.LoadFolderAsync(dialog.FolderName);
+    }
+
+    private void HandleNavigationKeys(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && NavigationOverlay.IsVisible)
+        {
+            CloseNavigationMenu();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            CloseNavigationMenu(restoreFocus: false);
+            Library.IsChecked = true;
+            LibraryScreen.FocusSearch();
+            e.Handled = true;
+        }
+    }
+
+    private void OpenNavigationMenu(object sender, RoutedEventArgs e)
+    {
+        NavigationOverlay.Visibility = Visibility.Visible;
+        SetScreenTabNavigation(KeyboardNavigationMode.None);
+        NavigationOverlay.UpdateLayout();
+        var active = LyricsTab.IsChecked == true ? MenuLyrics
+            : NowPlaying.IsChecked == true ? MenuNowPlaying
+            : MenuLibrary;
+        active.Focus();
+    }
+
+    private void CloseNavigationMenu(bool restoreFocus = true)
+    {
+        if (NavigationOverlay.Visibility != Visibility.Visible) return;
+        NavigationOverlay.Visibility = Visibility.Collapsed;
+        SetScreenTabNavigation(KeyboardNavigationMode.Continue);
+        if (restoreFocus) NavigationMenuButton.Focus();
+    }
+
+    private void SetScreenTabNavigation(KeyboardNavigationMode mode)
+    {
+        KeyboardNavigation.SetTabNavigation(NavigationRail, mode);
+        KeyboardNavigation.SetTabNavigation(ScreenHost, mode);
+    }
+
+    private void DismissNavigationMenu(object sender, RoutedEventArgs e) => CloseNavigationMenu();
+    private void DismissNavigationBackdrop(object sender, MouseButtonEventArgs e) => CloseNavigationMenu();
+
+    private void NavigateFromMenu(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { CommandParameter: RadioButton destination }) return;
+        destination.SetCurrentValue(ToggleButton.IsCheckedProperty, true);
+        CloseNavigationMenu();
+    }
+
+    private void ImportFromMenu(object sender, RoutedEventArgs e)
+    {
+        CloseNavigationMenu();
+        ChooseFolder(sender, e);
     }
 
     private void ShowLyrics(object sender, RoutedEventArgs e) => LyricsTab.IsChecked = true;

@@ -580,6 +580,58 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task NaturalCompletionPlaysNextAndStopsAtEndOfQueue()
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var songs = paths.Select(path => new Song(path)).ToArray();
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(songs));
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+
+            player.Complete(filePath: paths[0]);
+            Assert.Same(songs[1], vm.CurrentSong);
+            Assert.Equal(1, vm.SelectedIndex);
+            Assert.True(vm.IsPlaying);
+
+            player.Complete(filePath: paths[1]);
+            Assert.Null(vm.CurrentSong);
+            Assert.Equal("Reproducción finalizada.", vm.Status);
+            Assert.Equal(2, player.PlayCount);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CompletionDuringTrackStartRespectsWhichTrackEnded(bool incomingTrackEnded)
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var songs = paths.Select(path => new Song(path)).ToArray();
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(songs));
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            player.OnPlay = path =>
+            {
+                if (path == paths[1])
+                    player.Complete(filePath: incomingTrackEnded ? paths[1] : paths[0]);
+            };
+
+            await vm.PlayNextAsync();
+            Assert.Same(songs[incomingTrackEnded ? 2 : 1], vm.CurrentSong);
+            Assert.True(vm.IsPlaying);
+            Assert.Equal(incomingTrackEnded ? 3 : 2, player.PlayCount);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Fact]
     public async Task CompletionUpdatesViewModelAndDisposalUnsubscribes()
     {
         var player = new FakePlayer();
@@ -1034,14 +1086,17 @@ public sealed class MainViewModelTests
         public PlaybackProgress? Progress { get; set; }
         public List<TimeSpan> SeekRequests { get; } = [];
         public Func<CancellationToken, Task<PlaybackProgress?>>? ReadProgress { get; set; }
+        public Action<string>? OnPlay { get; set; }
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
         public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
         {
             PlayCount++;
             VolumesAtStart.Add(VolumePercent);
+            OnPlay?.Invoke(filePath);
             return Task.CompletedTask;
         }
-        public void Complete(Exception? error = null) => PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
+        public void Complete(Exception? error = null, string? filePath = null)
+            => PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error, filePath));
         public Task<bool> PauseAsync(CancellationToken cancellationToken = default)
         {
             PauseCount++;
