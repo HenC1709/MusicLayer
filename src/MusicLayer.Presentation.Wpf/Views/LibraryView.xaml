@@ -94,6 +94,15 @@
                     <Grid>
                         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                         <Grid x:Name="ColumnHeaders" Margin="6,4,8,4" Height="25" ClipToBounds="True">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Library.HasResults}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="26"/><ColumnDefinition Width="39"/><ColumnDefinition Width="1.5*"/>
                                 <ColumnDefinition Width="{DynamicResource ArtistColumn}"/><ColumnDefinition Width="{DynamicResource AlbumColumn}"/>
@@ -148,29 +157,69 @@
                                 </Grid>
                             </DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
-                        <StackPanel x:Name="EmptyState" Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <StackPanel.Style><Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers><DataTrigger Binding="{Binding Library.HasResults}" Value="False">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger></Style.Triggers>
-                            </Style></StackPanel.Style>
-                            <TextBlock FontWeight="SemiBold" FontSize="17" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="4,0">
-                                <TextBlock.Style><Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="No hay canciones en esta selección" />
+                        <ScrollViewer x:Name="EmptyState" Grid.RowSpan="2" Focusable="False"
+                                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      VerticalAlignment="Center" HorizontalAlignment="Center" Margin="5,2">
+                            <ScrollViewer.Style>
+                                <Style TargetType="ScrollViewer">
+                                    <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Text" Value="Tu biblioteca está vacía" /></DataTrigger>
-                                        <MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding Songs.Count}" Value="0"/><Condition Binding="{Binding HasImportedFolder}" Value="True"/></MultiDataTrigger.Conditions><Setter Property="Text" Value="Sin canciones compatibles"/></MultiDataTrigger>
-                                        <DataTrigger Binding="{Binding Notice}" Value="Importing"><Setter Property="Text" Value="Importando carpeta…" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding Library.HasResults}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Notice}" Value="Importing">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
                                     </Style.Triggers>
-                                </Style></TextBlock.Style>
-                            </TextBlock>
-                            <TextBlock Text="Importa una carpeta con archivos MP3, WAV o FLAC." TextAlignment="Center" TextWrapping="Wrap" Margin="4,4" Foreground="{StaticResource Muted}" FontSize="12">
-                                <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
-                                    <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                </Style.Triggers></Style></TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
+                                </Style>
+                            </ScrollViewer.Style>
+                            <Border Style="{DynamicResource StatusCard}" MaxWidth="460">
+                                <DockPanel>
+                                    <Border DockPanel.Dock="Left" Width="37" Height="37" VerticalAlignment="Top"
+                                            Margin="0,0,10,0" CornerRadius="8" Background="#183941">
+                                        <TextBlock Text="&#xE8F1;" Style="{DynamicResource StatusGlyph}" />
+                                    </Border>
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold" FontSize="17" TextWrapping="Wrap"
+                                                   AutomationProperties.LiveSetting="Polite">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="No hay canciones en esta selección" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                                                            <Setter Property="Text" Value="Tu biblioteca está vacía" />
+                                                        </DataTrigger>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Songs.Count}" Value="0" />
+                                                                <Condition Binding="{Binding HasImportedFolder}" Value="True" />
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Text" Value="Sin canciones compatibles" />
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <StackPanel>
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="Elige una carpeta con archivos MP3, WAV o FLAC."
+                                                       TextWrapping="Wrap" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,2,0,4" />
+                                            <Button x:Name="EmptyImportButton" Content="Importar carpeta" Click="ImportFolder"
+                                                    IsEnabled="{Binding IsReady}" Style="{DynamicResource StatusAction}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </ScrollViewer>
                     </Grid>
                 </Border>
             </Grid>

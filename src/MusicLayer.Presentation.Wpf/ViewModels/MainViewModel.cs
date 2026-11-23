@@ -39,6 +39,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool changingPlayback;
     private bool startingTrack;
     private bool advanceAfterCompletion;
+    private Func<CancellationToken, Task<Song?>>? retryPlayback;
     private bool seeking;
     private AudioState audioState;
     private int completionVersion;
@@ -98,6 +99,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public string? StatusDetail { get; private set; }
     public string? PreferencesWarning { get; private set; }
     public NoticeKind Notice { get; private set; }
+    public bool CanRetryPlayback => IsReady && Notice == NoticeKind.PlaybackError && retryPlayback is not null;
     public bool HasImportedFolder { get; private set; }
     public bool IsReady => !busy && !closing;
     public Song? CurrentSong
@@ -129,6 +131,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public bool CanPlaySelected => IsReady && SelectedIndex >= 0 && SelectedIndex < Songs.Count;
     public bool CanTogglePlayback => CanStop || CanPlaySelected || CanNext;
     public bool CanNext => IsReady && session.HasNext;
+    public bool CanRandomNext => IsReady && session.HasRandomNext;
     public bool CanPrevious => IsReady && session.HasPrevious;
     public bool IsPlaying => audioState == AudioState.Playing;
     public string PlaybackLabel => audioState switch
@@ -243,6 +246,15 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public Task PlayNextAsync() => RunTransportAsync(() =>
         PlayAsync(session.PlayNextAsync, "No hay una canción siguiente."));
 
+    public Task PlayRandomNextAsync() => RunTransportAsync(() =>
+        session.ChooseRandomNextIndex() is int index
+            ? PlayAsync(token => session.PlayAtAsync(index, token), "No hay otra canción en la cola.")
+            : Task.CompletedTask);
+
+    public Task RetryPlaybackAsync() => CanRetryPlayback && retryPlayback is { } start
+        ? RunTransportAsync(() => PlayAsync(start, "La pista ya no está en la cola."))
+        : Task.CompletedTask;
+
     public Task TogglePlaybackAsync() => audioState switch
     {
         AudioState.Playing => PauseAsync(),
@@ -316,6 +328,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         catch (Exception error) when (error is not OperationCanceledException)
         {
             advanceAfterCompletion = false;
+            retryPlayback = start;
             // A rejected selection can leave the previous track active. Check the actual output.
             await ReadProgressAsync();
             var message = error is FileNotFoundException { FileName: { } path }
@@ -623,12 +636,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     private void ShowStatus(string message, NoticeKind kind = NoticeKind.Information, string? detail = null)
     {
+        if (kind != NoticeKind.PlaybackError) retryPlayback = null;
         Status = message;
         Notice = kind;
         StatusDetail = detail;
         Notify(nameof(Status));
         Notify(nameof(Notice));
         Notify(nameof(StatusDetail));
+        Notify(nameof(CanRetryPlayback));
     }
 
     private void NotifyControls()
@@ -641,8 +656,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Notify(nameof(IsPlaying));
         Notify(nameof(TransportLabel));
         Notify(nameof(CanPlaySelected));
+        Notify(nameof(CanRetryPlayback));
         Notify(nameof(CanTogglePlayback));
         Notify(nameof(CanNext));
+        Notify(nameof(CanRandomNext));
         Notify(nameof(CanPrevious));
         Notify(nameof(CanPause));
         Notify(nameof(CanResume));

@@ -53,24 +53,46 @@
                     </TextBlock>
                 </WrapPanel>
             </DockPanel>
-            <Grid Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
-                <Grid.Style>
-                    <Style TargetType="Grid"><Style.Triggers>
-                        <DataTrigger Binding="{Binding HasLyrics}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers></Style>
-                </Grid.Style>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Border Background="{DynamicResource RaisedBrush}" CornerRadius="9" Width="36" Height="36" VerticalAlignment="Center">
-                    <Image Source="{DynamicResource Music}" Width="20" Height="20" />
+            <ScrollViewer x:Name="LyricsState" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLyrics}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+                <Border Style="{DynamicResource StatusCard}" MaxWidth="390">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left" Background="#183941" CornerRadius="8" Width="38" Height="38"
+                                VerticalAlignment="Top" Margin="0,0,12,0">
+                            <TextBlock Text="&#xE8A4;" Style="{DynamicResource StatusGlyph}" />
+                        </Border>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Status}" FontWeight="SemiBold" FontSize="18" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource InkBrush}" AutomationProperties.LiveSetting="Polite" />
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanRetry}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Puedes poner un archivo .lrc con el mismo nombre junto a la canción."
+                                           Foreground="{DynamicResource SecondaryBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,3,0,6" />
+                                <Button x:Name="RetryLyricsButton" Content="Buscar de nuevo" Style="{DynamicResource StatusAction}"
+                                        Click="RetryLyrics" />
+                            </StackPanel>
+                        </StackPanel>
+                    </DockPanel>
                 </Border>
-                <TextBlock Grid.Column="1" Text="{Binding Status}" FontWeight="SemiBold" FontSize="20"
-                           Margin="12,0,0,0" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
-                           VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-            </Grid>
+            </ScrollViewer>
             <ListBox x:Name="LinesList" Grid.Row="1" ItemsSource="{Binding Rows}" Background="Transparent"
                      BorderThickness="0" AutomationProperties.Name="Letra sincronizada"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.PanningMode="VerticalOnly"

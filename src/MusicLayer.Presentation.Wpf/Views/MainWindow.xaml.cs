@@ -126,11 +126,17 @@ public partial class MainWindow : Window
         LibraryScreen.FocusSongList();
     }
 
+    private async void RetryPlayback(object sender, RoutedEventArgs e)
+        => await viewModel.RetryPlaybackAsync();
+
     private async void PlayPrevious(object sender, RoutedEventArgs e)
         => await viewModel.PlayPreviousAsync();
 
     private async void PlayNext(object sender, RoutedEventArgs e)
         => await viewModel.PlayNextAsync();
+
+    private async void PlayRandomNext(object sender, RoutedEventArgs e)
+        => await viewModel.PlayRandomNextAsync();
 
     private async void TogglePlayback(object sender, RoutedEventArgs e)
         => await viewModel.TogglePlaybackAsync();

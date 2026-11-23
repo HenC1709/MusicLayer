@@ -143,21 +143,25 @@
                     </views:NowPlayingView.Style>
                 </views:NowPlayingView>
 
-                <Border Grid.Row="1" Margin="16,0,16,4" CornerRadius="8">
+                <Border x:Name="StatusBanner" Grid.Row="1" Margin="16,0,16,4" CornerRadius="8">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Padding" Value="3,2" />
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding Notice}" Value="Importing">
+                                    <Setter Property="Background" Value="#12323B" />
+                                    <Setter Property="Padding" Value="10,6" />
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding Notice}" Value="Imported">
-                                    <Setter Property="Background" Value="{StaticResource HoverBrush}" />
+                                    <Setter Property="Background" Value="#163832" />
                                     <Setter Property="Padding" Value="10,6" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
-                                    <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+                                    <Setter Property="Background" Value="#35252B" />
                                     <Setter Property="Padding" Value="10,6" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Notice}" Value="FolderError">
-                                    <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+                                    <Setter Property="Background" Value="#35252B" />
                                     <Setter Property="Padding" Value="10,6" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -165,22 +169,119 @@
                     </Border.Style>
                     <StackPanel>
                         <DockPanel>
-                            <Button DockPanel.Dock="Right" Content="Elegir otra canción" Click="ChooseAnotherSong"
-                                    IsEnabled="{Binding IsReady}" Margin="8,0,0,0">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers><DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                            <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                                <Button x:Name="RetryPlaybackButton" Content="Reintentar" Click="RetryPlayback" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
                                             <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger></Style.Triggers>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanRetryPlayback}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="AnotherSongButton" Content="Elegir otra canción" Click="ChooseAnotherSong"
+                                        IsEnabled="{Binding IsReady}" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="ImportRecoveryButton" Content="Elegir carpeta" Click="ChooseFolder"
+                                        IsEnabled="{Binding IsReady}" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="FolderError">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="ImportedLibraryButton" Content="Ver biblioteca" Click="ChooseAnotherSong"
+                                        IsEnabled="{Binding IsReady}" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Imported">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </WrapPanel>
+                            <TextBlock DockPanel.Dock="Left" Margin="0,0,10,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource StatusGlyph}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Notice}" Value="Importing">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE895;" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Notice}" Value="Imported">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE73E;" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                                <Setter Property="Foreground" Value="#FFC0B6" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Notice}" Value="FolderError">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                                <Setter Property="Foreground" Value="#FFC0B6" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
                                     </Style>
-                                </Button.Style>
-                            </Button>
-                            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" ToolTip="{Binding StatusDetail}"
-                                   AutomationProperties.LiveSetting="Polite" />
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock FontWeight="SemiBold" TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Information">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Error">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Importing">
+                                                    <Setter Property="Text" Value="Importando música" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Imported">
+                                                    <Setter Property="Text" Value="Importación completada" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
+                                                    <Setter Property="Text" Value="Error de reproducción" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="FolderError">
+                                                    <Setter Property="Text" Value="No se pudo importar la carpeta" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" ToolTip="{Binding StatusDetail}"
+                                           AutomationProperties.LiveSetting="Polite" />
+                            </StackPanel>
                         </DockPanel>
                         <TextBlock Text="{Binding PreferencesWarning}" TextWrapping="Wrap"
                                AutomationProperties.LiveSetting="Polite">
@@ -315,6 +416,10 @@
                         </Button>
                         <Button Style="{StaticResource Transport}" Click="PlayNext" ToolTip="Siguiente" IsEnabled="{Binding CanNext}">
                             <Image Source="{StaticResource Next}" Width="18" />
+                        </Button>
+                        <Button x:Name="RandomNextButton" Style="{StaticResource Transport}" Click="PlayRandomNext"
+                                ToolTip="Siguiente aleatoria" IsEnabled="{Binding CanRandomNext}">
+                            <TextBlock Text="&#xE8B1;" FontFamily="Segoe MDL2 Assets" FontSize="17" />
                         </Button>
                         <Button Style="{StaticResource Transport}" Click="Stop" ToolTip="Detener" IsEnabled="{Binding CanStop}">
                             <Border Width="12" Height="12" Background="{StaticResource InkBrush}" CornerRadius="2" />

@@ -71,6 +71,26 @@
         <Setter Property="Margin" Value="3,0" />
         <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}" />
     </Style>
+    <Style x:Key="StatusCard" TargetType="Border">
+        <Setter Property="Background" Value="#E30D222C" />
+        <Setter Property="BorderBrush" Value="#35545D" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+    <Style x:Key="StatusGlyph" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+        <Setter Property="FontSize" Value="21" />
+        <Setter Property="Foreground" Value="#63EACB" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="StatusAction" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="#193D42" />
+        <Setter Property="BorderBrush" Value="#396A6C" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
     <Style x:Key="Nav" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{StaticResource SecondaryBrush}" />
         <Setter Property="Template">

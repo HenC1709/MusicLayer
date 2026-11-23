@@ -11,6 +11,18 @@ public sealed class PlaybackSession(PlaySong playSong)
     public int? CurrentIndex => queue.CurrentIndex;
     public bool HasNext => queue.NextIndex.HasValue;
     public bool HasPrevious => queue.PreviousIndex.HasValue;
+    public bool HasRandomNext => RandomCandidateCount > 0;
+    private int RandomCandidateCount => queue.Songs.Count - (queue.CurrentIndex.HasValue ? 1 : 0);
+
+    public int? ChooseRandomNextIndex()
+    {
+        var count = RandomCandidateCount;
+        if (count == 0) return null;
+
+        // Map a uniform draw over the eligible tracks back to the queue positions.
+        var index = Random.Shared.Next(count);
+        return queue.CurrentIndex is int current && index >= current ? index + 1 : index;
+    }
 
     public async Task ReplaceQueueAsync(IEnumerable<Song> songs, CancellationToken cancellationToken = default)
     {

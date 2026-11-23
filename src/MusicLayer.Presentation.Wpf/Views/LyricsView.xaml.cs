@@ -228,6 +228,11 @@ public partial class LyricsView : UserControl
         }
     }
 
+    private async void RetryLyrics(object sender, RoutedEventArgs e)
+    {
+        if (model is { } lyrics) await lyrics.RetryAsync();
+    }
+
     private void PauseFollowing()
     {
         StopFollowingMotion();

@@ -61,6 +61,8 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
     public IReadOnlyList<LyricRow> Rows { get; private set; } = [];
     public string? PlainText => document?.PlainText;
     public bool HasLyrics => Rows.Count > 0 || PlainText is not null;
+    public bool CanRetry => IsOpen && !closed && request is null &&
+        document?.Kind is LyricsDocumentKind.NotFound or LyricsDocumentKind.TemporarilyUnavailable;
     public string Status { get; private set; } = "Reproduce una canción para ver su letra.";
     public int ActiveLineIndex { get; private set; } = -1;
     public bool IsOpen
@@ -92,6 +94,14 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
         return seekTo(row.Start);
     }
 
+    public Task RetryAsync()
+    {
+        if (!CanRetry) return Task.CompletedTask;
+        requested = false;
+        StartIfReady();
+        return pending;
+    }
+
     internal void ObserveProgress(PlaybackProgress? snapshot)
     {
         progress = snapshot;
@@ -104,8 +114,9 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
     {
         if (!IsOpen || !sampled || requested || closed || track is null) return;
         requested = true;
-        SetStatus("Buscando letra…");
         request = new CancellationTokenSource();
+        SetStatus("Buscando letra…");
+        Notify(nameof(CanRetry));
         var lookup = LoadAsync(track, progress?.Duration, request);
         pending = pending.IsCompleted ? lookup : Task.WhenAll(pending, lookup);
     }
@@ -134,11 +145,19 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
         catch (OperationCanceledException) when (source.IsCancellationRequested) { }
         catch (Exception)
         {
-            if (request == source && !closed) SetStatus("Letra temporalmente no disponible");
+            if (request == source && !closed)
+            {
+                document = LyricsDocument.FromLookup(new(LyricsLookupStatus.TemporarilyUnavailable));
+                SetStatus("Letra temporalmente no disponible");
+            }
         }
         finally
         {
-            if (request == source) request = null;
+            if (request == source)
+            {
+                request = null;
+                Notify(nameof(CanRetry));
+            }
             source.Dispose();
         }
     }
@@ -150,6 +169,7 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
         previous?.Cancel();
         requested = false;
         document = null;
+        Notify(nameof(CanRetry));
         UpdateActiveLine();
         Rows = [];
         Notify(nameof(Rows));

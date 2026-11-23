@@ -580,6 +580,42 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task RandomNextSkipsCurrentTrackAndRetriesTheSameChoiceOnFailure()
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var songs = paths.Select(path => new Song(path)).ToArray();
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(songs));
+            await vm.LoadFolderAsync(".");
+            vm.SelectedIndex = 2;
+            await vm.PlaySelectedAsync();
+            Assert.False(vm.CanNext);
+            Assert.True(vm.CanRandomNext);
+
+            string? failed = null;
+            player.OnPlay = path =>
+            {
+                failed = path;
+                throw new IOException("Audio output failed.");
+            };
+            await vm.PlayRandomNextAsync();
+            Assert.Contains(failed, paths[..2]);
+            Assert.True(vm.CanRetryPlayback);
+
+            player.OnPlay = null;
+            await vm.RetryPlaybackAsync();
+            Assert.Equal(failed, vm.CurrentSong?.FilePath);
+            var previous = vm.CurrentSong;
+            await vm.PlayRandomNextAsync();
+            Assert.NotSame(previous, vm.CurrentSong);
+            Assert.True(vm.IsPlaying);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Fact]
     public async Task NaturalCompletionPlaysNextAndStopsAtEndOfQueue()
     {
         var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName() };
