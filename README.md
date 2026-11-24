@@ -2,6 +2,18 @@
 
 Reproductor de música de escritorio para Windows, desarrollado en C# con WPF y organizado en capas. El repositorio de preferencias locales usa SQLite.
 
+## Capturas
+
+![Biblioteca de Tonic con pistas de muestra, búsqueda y ficha de la canción activa](Assets/screenshots/biblioteca.png)
+
+| Reproducción | Letras |
+| --- | --- |
+| ![Cola y forma de onda de la pista activa](Assets/screenshots/reproduccion.png) | ![Letra sincronizada con el verso activo resaltado](Assets/screenshots/letras.png) |
+
+| Playlists | Configuración |
+| --- | --- |
+| ![Cuadrícula de playlists de muestra](Assets/screenshots/playlists.png) | ![Ajustes de carpeta, volumen, reproducción y letras](Assets/screenshots/configuracion.png) |
+
 ## Funciones
 
 - **Biblioteca.** Importa carpetas con archivos MP3, WAV y FLAC. Busca por título, artista, álbum o género, consulta las carátulas y organiza las pistas por categorías.
@@ -11,7 +23,18 @@ Reproductor de música de escritorio para Windows, desarrollado en C# con WPF y 
 - **Playlists.** Crea listas con nombre y, si quieres, añade género, descripción y portada JPG o PNG. Puedes editar la lista, reordenar sus canciones y reproducirlas en ese orden.
 - **Configuración.** Cambia la carpeta y el volumen, controla el avance automático y ajusta el seguimiento y la atenuación de los versos. Puedes activar **Recordar dónde me quedé**.
 
-## Estructura
+## Arquitectura
+
+Las flechas indican referencias directas entre proyectos. El arranque de WPF registra las implementaciones de Infrastructure para los contratos de Application.
+
+```mermaid
+flowchart TD
+    WPF["Presentation.Wpf"] --> APP["Application"]
+    WPF --> INF["Infrastructure"]
+    INF --> APP
+    INF --> DOM["Domain"]
+    APP --> DOM
+```
 
 | Proyecto | Responsabilidad |
 | --- | --- |
@@ -29,9 +52,9 @@ Reproductor de música de escritorio para Windows, desarrollado en C# con WPF y 
 1. **Sprint 1 — Base y primer sonido:** solución, capas, contratos, escaneo de carpetas y reproducción inicial.
 2. **Sprint 2 — Control de reproducción:** cola, pausa, siguiente/anterior, volumen, liberación de recursos y pruebas.
 3. **Sprint 3 — Interfaz y MVP:** ventana WPF, controles, progreso, trabajo fuera del hilo de UI y errores visibles.
-4. **Sprint 4 — Pulido y entrega.** Tonic muestra metadatos y carátulas de MP3, WAV y FLAC y guarda sus preferencias en SQLite. Queda la verificación final en Windows.
+4. **Sprint 4 — Pulido y entrega.** Metadatos y carátulas de MP3, WAV y FLAC, preferencias en SQLite y restauración de la biblioteca y el volumen al abrir.
 
-Al abrir, Tonic vuelve a escanear la última carpeta importada correctamente y espera a que inicies la reproducción. Si la carpeta se movió o perdió sus permisos, puedes elegir otra. El plan detallado se mantiene en el archivo local `docs/SPRINTS.md`.
+Al abrir, Tonic vuelve a escanear la última carpeta importada correctamente y espera a que inicies la reproducción. Si la carpeta se movió o perdió sus permisos, puedes elegir otra.
 
 ### Refactor visual
 
@@ -46,9 +69,19 @@ El [seguimiento del refactor visual](progress.md) reúne las referencias y las c
 
 ## Empezar
 
-Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop instalada, o ejecuta `dotnet build MusicLayer.sln` con el SDK de .NET 10. La primera restauración descarga las dependencias desde NuGet.
+Usa Windows con el SDK de .NET 10. Desde la carpeta donde tienes `MusicLayer.sln`, ejecuta estos comandos. La primera restauración descarga las dependencias desde NuGet.
 
-Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` y pulsa **Importar carpeta** en Biblioteca. Usa **Ctrl+F** para buscar. Haz doble clic en una fila o pulsa **Enter** para escucharla. **Reproducir** en Biblioteca inicia la primera pista visible. Su botón **Reproducir una pista al azar** elige una de las pistas visibles. **Recientes** muestra las pistas reproducidas durante la sesión.
+```powershell
+dotnet build MusicLayer.sln
+dotnet test MusicLayer.sln
+dotnet run --project src/MusicLayer.Presentation.Wpf
+```
+
+También puedes abrir `MusicLayer.sln` en Visual Studio con la carga de trabajo de desarrollo de escritorio de .NET.
+
+## Uso
+
+Pulsa **Importar carpeta** en Biblioteca. Usa **Ctrl+F** para buscar. Haz doble clic en una fila o pulsa **Enter** para escucharla. **Reproducir** en Biblioteca inicia la primera pista visible. Su botón **Reproducir una pista al azar** elige una de las pistas visibles. **Recientes** muestra las pistas reproducidas durante la sesión.
 
 Con el reproductor detenido, selecciona un MP3, WAV o FLAC para ver su carátula en el panel. Tonic prefiere la imagen marcada como portada frontal. Si esa etiqueta falta, usa la primera imagen incrustada disponible. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si falta una portada legible, el panel de Biblioteca muestra el planeta del diseño de referencia.
 
@@ -74,4 +107,11 @@ El escaneo incluye subcarpetas, omite las carpetas sin permisos de acceso y evit
 
 Al importar una carpeta, Tonic muestra cuántas canciones encontró. Si la carpeta está vacía o solo contiene otros formatos, **Elegir carpeta** permite probar con otra. Si falla la lectura de la carpeta elegida, la biblioteca anterior sigue disponible. Ante un error de reproducción, **Elegir otra canción** devuelve el foco a la lista para seleccionar una pista con el teclado o el ratón.
 
-Ejecuta `dotnet test MusicLayer.sln` en Windows para las pruebas xUnit de dominio, aplicación, infraestructura y presentación. Para comprobar el audio, importa MP3, WAV y FLAC y prueba la reproducción, la pausa y los saltos de posición.
+## Validación en Windows
+
+Puedes hacer el recorrido desde tu copia local del proyecto. Para reconstruir los archivos de compilación, ejecuta `dotnet clean MusicLayer.sln` antes de los comandos de **Empezar**.
+
+1. Importa una carpeta con MP3, WAV y FLAC. Comprueba los metadatos, las carátulas y la imagen de respaldo en una pista sin portada.
+2. Escucha los tres formatos y prueba pausa, reanudación y saltos desde la barra de progreso y desde un verso sincronizado.
+3. Abre una canción conocida sin `.lrc` local, compara la letra de LRCLIB con el audio y vuelve a abrirla sin conexión para comprobar la caché.
+4. Cambia el volumen y reinicia Tonic. Comprueba que recupera la biblioteca y el volumen. Si la carpeta guardada se movió, comprueba que puedes importar otra.

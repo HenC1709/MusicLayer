@@ -4,6 +4,7 @@
 artifacts/
 Guide/
 docs/
+/progress.md
 
 # Local database and user-specific data
 *.db
