@@ -56,10 +56,6 @@ flowchart TD
 
 Al abrir, Tonic vuelve a escanear la última carpeta importada correctamente y espera a que inicies la reproducción. Si la carpeta se movió o perdió sus permisos, puedes elegir otra.
 
-### Refactor visual
-
-El [seguimiento del refactor visual](progress.md) reúne las referencias y las comprobaciones de Biblioteca, Reproducción, Letras, Playlists, Configuración, el menú y los estados de la interfaz.
-
 ## Decisiones iniciales
 
 - Aplicación de escritorio Windows con WPF y .NET 10.
@@ -109,9 +105,13 @@ Al importar una carpeta, Tonic muestra cuántas canciones encontró. Si la carpe
 
 ## Validación en Windows
 
+La versión documentada compiló en una copia local con el SDK de .NET 10.0.300, con cero errores y advertencias. Pasaron las 134 pruebas xUnit.
+
 Puedes hacer el recorrido desde tu copia local del proyecto. Para reconstruir los archivos de compilación, ejecuta `dotnet clean MusicLayer.sln` antes de los comandos de **Empezar**.
 
 1. Importa una carpeta con MP3, WAV y FLAC. Comprueba los metadatos, las carátulas y la imagen de respaldo en una pista sin portada.
 2. Escucha los tres formatos y prueba pausa, reanudación y saltos desde la barra de progreso y desde un verso sincronizado.
 3. Abre una canción conocida sin `.lrc` local, compara la letra de LRCLIB con el audio y vuelve a abrirla sin conexión para comprobar la caché.
 4. Cambia el volumen y reinicia Tonic. Comprueba que recupera la biblioteca y el volumen. Si la carpeta guardada se movió, comprueba que puedes importar otra.
+
+Para completar la validación manual quedan la escucha en un dispositivo de audio, la consulta real a LRCLIB con su prueba de caché sin conexión y la revisión a DPI alto. Si tienes una pantalla táctil, comprueba también el arrastre de la barra de progreso.
