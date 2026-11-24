@@ -92,4 +92,53 @@ public sealed class SqlitePlaybackPreferencesRepositoryTests : IDisposable
     }
 
     public void Dispose() => sandbox.Delete(recursive: true);
+
+    [Fact]
+    public async Task FavoritesSurviveReopeningAndCanBeRemovedAcrossPathCasing()
+    {
+        const string first = @"C:\Música\Primera.flac";
+        const string second = @"C:\Otra\Segunda.wav";
+        await OpenRepository().SaveVolumeAsync(35);
+        Assert.Empty(await OpenRepository().ReadFavoritesAsync());
+        await OpenRepository().SaveFavoriteAsync(first, true);
+        await OpenRepository().SaveFavoriteAsync(first.ToUpperInvariant(), true);
+        await OpenRepository().SaveFavoriteAsync(second, true);
+        Assert.Equal(2, (await OpenRepository().ReadFavoritesAsync()).Count);
+
+        await OpenRepository().SaveFavoriteAsync(first.ToUpperInvariant(), false);
+        Assert.Equal(second, Assert.Single(await OpenRepository().ReadFavoritesAsync()));
+        Assert.Equal(35, (await OpenRepository().ReadAsync()).VolumePercent);
+    }
+
+    [Fact]
+    public async Task ExistingDatabaseGainsOptionsAndClearsBookmarkWhenDisabled()
+    {
+        Directory.CreateDirectory(DatabaseDirectory);
+        var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {
+            DataSource = Path.Combine(DatabaseDirectory, "preferences.db"), Pooling = false
+        }.ToString();
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE playback_preferences (id INTEGER PRIMARY KEY, library_folder TEXT, volume_percent INTEGER);
+                INSERT INTO playback_preferences VALUES (1, $folder, 35);
+                """;
+            command.Parameters.AddWithValue("$folder", LibraryFolder);
+            command.ExecuteNonQuery();
+        }
+
+        var original = new PlaybackPreferences(LibraryFolder, 35);
+        Assert.Equal(original, await OpenRepository().ReadAsync());
+        var options = new PlayerOptions(true, false, false, false);
+        var bookmark = new PlaybackBookmark(Path.Combine(LibraryFolder, "Pista.flac"), TimeSpan.FromSeconds(12));
+        await OpenRepository().SaveOptionsAsync(options);
+        await OpenRepository().SaveBookmarkAsync(bookmark);
+        Assert.Equal(original with { Options = options, Bookmark = bookmark }, await OpenRepository().ReadAsync());
+        await OpenRepository().SaveOptionsAsync(options with { RememberPosition = false });
+        await OpenRepository().SaveOptionsAsync(options);
+        Assert.Equal(original with { Options = options }, await OpenRepository().ReadAsync());
+    }
 }

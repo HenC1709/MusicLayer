@@ -14,6 +14,10 @@ namespace MusicLayer.Presentation.Wpf.Views;
 
 public partial class LyricsView : UserControl
 {
+    private const int MinimumTextScale = 80;
+    private const int MaximumTextScale = 160;
+    private const int TextScaleStep = 10;
+    private int textScale = 100;
     private LyricsViewModel? model;
     private DispatcherOperation? pendingFollow;
     private readonly DispatcherTimer scrollTimer = new(DispatcherPriority.Render)
@@ -25,6 +29,16 @@ public partial class LyricsView : UserControl
     private double startOffset;
     private double targetOffset;
     private long scrollStarted;
+
+    public static readonly DependencyProperty FollowLyricsProperty = DependencyProperty.Register(
+        nameof(FollowLyrics), typeof(bool), typeof(LyricsView),
+        new PropertyMetadata(true, (view, _) => ((LyricsView)view).FollowActive()));
+
+    public bool FollowLyrics
+    {
+        get => (bool)GetValue(FollowLyricsProperty);
+        set => SetValue(FollowLyricsProperty, value);
+    }
 
     public static readonly DependencyProperty AmbientCoverProperty = DependencyProperty.Register(
         nameof(AmbientCover), typeof(BitmapSource), typeof(LyricsView),
@@ -39,6 +53,7 @@ public partial class LyricsView : UserControl
     public LyricsView()
     {
         InitializeComponent();
+        ApplyTextSizes(0, compact: true);
         scrollTimer.Tick += AnimateScroll;
         manualScrollTimer.Tick += ResumeAfterScrolling;
         IsVisibleChanged += (_, _) =>
@@ -109,9 +124,31 @@ public partial class LyricsView : UserControl
         TrackInfo.Margin = compact ? new Thickness(12, 0, 0, 0) : new Thickness(0, 16, 0, 0);
         TrackInfo.Width = compact ? Math.Max(0, width - 2 * gutter - cover - 12) : cover;
         VersePanel.Margin = new Thickness(gutter, compact ? 8 : gutter, gutter, compact ? 6 : gutter);
-        Resources["VerseSize"] = compact ? 20d : Math.Clamp(width * .028, 24, 38);
-        Resources["ActiveVerseSize"] = compact ? 24d : Math.Clamp(width * .036, 30, 50);
+        ApplyTextSizes(width, compact);
         FollowActive();
+    }
+
+    private void DecreaseTextSize(object sender, RoutedEventArgs e) => ChangeTextScale(-TextScaleStep);
+    private void IncreaseTextSize(object sender, RoutedEventArgs e) => ChangeTextScale(TextScaleStep);
+
+    private void ChangeTextScale(int change)
+    {
+        textScale = Math.Clamp(textScale + change, MinimumTextScale, MaximumTextScale);
+        var width = Layout.ActualWidth;
+        ApplyTextSizes(width, width < 700 || Layout.ActualHeight < 370);
+        FollowActive();
+    }
+
+    private void ApplyTextSizes(double width, bool compact)
+    {
+        var scale = textScale / 100d;
+        Resources["VerseSize"] = (compact ? 20d : Math.Clamp(width * .028, 24, 38)) * scale;
+        Resources["ActiveVerseSize"] = (compact ? 24d : Math.Clamp(width * .036, 30, 50)) * scale;
+        Resources["PlainVerseSize"] = 23d * scale;
+        Resources["PlainVerseLineHeight"] = 34d * scale;
+        LyricsScaleLabel.Text = $"{textScale} %";
+        SmallerLyrics.IsEnabled = textScale > MinimumTextScale;
+        LargerLyrics.IsEnabled = textScale < MaximumTextScale;
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e) => Attach(DataContext as LyricsViewModel);
@@ -144,7 +181,7 @@ public partial class LyricsView : UserControl
     private void FollowActive()
     {
         StopFollowingMotion();
-        if (!IsLoaded || !IsVisible || manualScrollTimer.IsEnabled ||
+        if (!IsLoaded || !IsVisible || !FollowLyrics || manualScrollTimer.IsEnabled ||
             model is not { ActiveLineIndex: >= 0 } lyrics) return;
 
         var row = lyrics.Rows[lyrics.ActiveLineIndex];

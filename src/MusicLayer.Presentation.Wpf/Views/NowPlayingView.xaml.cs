@@ -20,7 +20,7 @@ public partial class NowPlayingView : UserControl
         IsVisibleChanged += (_, _) =>
         {
             if (!IsVisible) return;
-            var active = Model?.CurrentSongIndex ?? -1;
+            var active = Model?.CurrentQueueIndex ?? -1;
             if (active >= 0 && active < QueueList.Items.Count)
                 QueueList.ScrollIntoView(QueueList.Items[active]);
             else
@@ -56,6 +56,9 @@ public partial class NowPlayingView : UserControl
         QueuePanel.Margin = new Thickness(0, topGap, 0, compact ? 0 : topGap * .7);
         HeroScroll.VerticalAlignment = compact ? VerticalAlignment.Center : VerticalAlignment.Top;
         HeroScroll.Margin = new Thickness(0, topGap, 0, 0);
+        var waveformSpace = height - topGap - art - 108;
+        WaveformPanel.Visibility = !compact && waveformSpace >= 78 ? Visibility.Visible : Visibility.Collapsed;
+        WaveformPanel.Height = Math.Clamp(waveformSpace, 78, 148);
         DockPanel.SetDock(CoverFrame, compact ? Dock.Top : Dock.Left);
         CoverFrame.Width = CoverFrame.Height = art;
         CoverFrame.CornerRadius = new CornerRadius(compact ? 12 : 22);
@@ -78,8 +81,7 @@ public partial class NowPlayingView : UserControl
     private async Task PlayRowAsync(SongRow? row)
     {
         if (row is null || Model is not { IsReady: true } model) return;
-        model.SelectedIndex = row.Index;
-        await model.PlaySelectedAsync();
+        await model.PlayQueueRowAsync(row);
     }
 
     private async void PlaySelection(object sender, RoutedEventArgs e) => await PlayRowAsync(QueueList.SelectedItem as SongRow);

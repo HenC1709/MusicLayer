@@ -126,7 +126,6 @@ public partial class LibraryView : UserControl
         Shortcut.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         Detail.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         DetailColumn.Width = compact ? new GridLength(0) : new GridLength(.4, GridUnitType.Star);
-        ArtFrame.Height = Math.Clamp((width - 48) / 3.5 - 65, 112, 268);
         Heading.Margin = shortView ? new Thickness(0,4,0,3) : new Thickness(0,17,0,14);
         Title.FontSize = shortView ? 23 : 38;
         Toolbar.Margin = shortView ? new Thickness(0,0,0,3) : new Thickness(0,6,0,10);
@@ -134,6 +133,14 @@ public partial class LibraryView : UserControl
         Resources["ArtistColumn"] = new GridLength(1, GridUnitType.Star);
         Resources["AlbumColumn"] = width < 660 ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         Resources["TimeColumn"] = new GridLength(52);
+    }
+
+    private void ResizeDetail(object sender, SizeChangedEventArgs e)
+    {
+        var size = e.NewSize;
+        var artwork = Math.Min(size.Width, size.Height * .69);
+        ArtFrame.Width = ArtFrame.Height = artwork;
+        DetailTitle.FontSize = Math.Clamp(artwork * .09, 21, 31);
     }
 
     private void LoadRowArt(object sender, RoutedEventArgs e) => RefreshThumbnail((Image)sender);

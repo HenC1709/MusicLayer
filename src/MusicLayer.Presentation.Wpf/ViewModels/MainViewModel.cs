@@ -31,6 +31,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private Task pending = Task.CompletedTask;
     private Task pendingVolume = Task.CompletedTask;
     private Task pendingVolumeSave = Task.CompletedTask;
+    private Task pendingOptionsSave = Task.CompletedTask;
+    private Task pendingFavoritesSave = Task.CompletedTask;
+    private PlayerOptions options = new();
+    private PlaybackBookmark? resumeBookmark;
     private Task pendingProgress = Task.CompletedTask;
     private Task pendingCover = Task.CompletedTask;
     private string? coverPath;
@@ -53,7 +57,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public MainViewModel(IAudioPlayer player, ScanMusicFolder scanner, PlaybackSession session,
         PausePlayback pause, ResumePlayback resume, StopPlayback stop, SetPlaybackVolume setVolume, ICoverArtReader coverReader,
-        LoadTrackLyrics loadLyrics, SeekPlayback seek, IPlaybackPreferencesRepository preferences)
+        LoadTrackLyrics loadLyrics, SeekPlayback seek, IPlaybackPreferencesRepository preferences,
+        IPlaylistRepository? playlistRepository = null)
     {
         this.player = player;
         this.scanner = scanner;
@@ -65,6 +70,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         this.seek = seek;
         this.coverReader = coverReader;
         this.preferences = preferences;
+        Library.FavoriteChanged += QueueFavoriteSave;
+        if (playlistRepository is not null) Playlists = new PlaylistsViewModel(playlistRepository, lifetime.Token);
         Lyrics = new LyricsViewModel(loadLyrics, position => RunSeekAsync(_ => seek.ExecuteAsync(position, lifetime.Token)));
         context = SynchronizationContext.Current ?? new SynchronizationContext();
         player.PlaybackEnded += OnPlaybackEnded;
@@ -73,6 +80,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public event PropertyChangedEventHandler? PropertyChanged;
     public LyricsViewModel Lyrics { get; }
     public LibraryBrowser Library { get; } = new();
+    public PlaylistsViewModel? Playlists { get; }
     public string? LibraryFolder { get; private set; }
     public SongRow? SelectedLibraryRow
     {
@@ -87,14 +95,22 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (selectedIndex == value) return;
             selectedIndex = value;
             Notify(nameof(SelectedLibraryRow));
+            Notify(nameof(SelectedQueueRow));
             Notify();
             RefreshCover();
             Notify(nameof(CanPlaySelected));
+            Notify(nameof(CanPlayQueueSelected));
             Notify(nameof(CanTogglePlayback));
         }
     }
     public IReadOnlyList<Song> Songs { get => songs; private set { songs = value; Notify(); } }
     public IReadOnlyList<SongRow> SongRows { get; private set; } = [];
+    public IReadOnlyList<SongRow> QueueRows { get; private set; } = [];
+    public SongRow? SelectedQueueRow
+    {
+        get => SelectedLibraryRow is { } row && (ReferenceEquals(QueueRows, SongRows) || QueueRows.Contains(row)) ? row : null;
+        set { if (value is not null) SelectedIndex = value.Index; }
+    }
     public string Status { get; private set; } = "Elige una carpeta con música.";
     public string? StatusDetail { get; private set; }
     public string? PreferencesWarning { get; private set; }
@@ -127,11 +143,32 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public BitmapSource? CoverImage { get; private set; }
     // Preserve the current tint until the new artwork read resolves, including a missing cover.
     public BitmapSource? AmbientCoverImage { get; private set; }
-    public int CurrentSongIndex => CurrentSong is null ? -1 : session.CurrentIndex ?? -1;
+    public int CurrentQueueIndex => CurrentSong is null ? -1 : session.CurrentIndex ?? -1;
+    public int CurrentSongIndex
+    {
+        get
+        {
+            var index = CurrentQueueIndex;
+            return index >= 0 && index < QueueRows.Count ? QueueRows[index].Index : -1;
+        }
+    }
     public bool CanPlaySelected => IsReady && SelectedIndex >= 0 && SelectedIndex < Songs.Count;
+    public bool CanPlayQueueSelected => IsReady && SelectedQueueRow is not null;
     public bool CanTogglePlayback => CanStop || CanPlaySelected || CanNext;
-    public bool CanNext => IsReady && session.HasNext;
-    public bool CanRandomNext => IsReady && session.HasRandomNext;
+    public bool CanNext => IsReady && HasNextInMode;
+    private bool HasNextInMode => IsShuffleEnabled ? session.HasRandomNext : session.HasNext;
+    public bool IsShuffleEnabled
+    {
+        get;
+        set
+        {
+            if (field == value) return;
+            field = value;
+            Notify();
+            Notify(nameof(CanNext));
+            Notify(nameof(CanTogglePlayback));
+        }
+    }
     public bool CanPrevious => IsReady && session.HasPrevious;
     public bool IsPlaying => audioState == AudioState.Playing;
     public string PlaybackLabel => audioState switch
@@ -156,6 +193,49 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     public string ElapsedTimeText => FormatPlaybackTime(progress?.Elapsed ?? TimeSpan.Zero);
     public string DurationText => progress is { } value ? FormatPlaybackTime(value.Duration) : "--:--";
 
+    public bool RememberPosition
+    {
+        get => options.RememberPosition;
+        set => ChangeOptions(options with { RememberPosition = value });
+    }
+
+    public bool AutoAdvance
+    {
+        get => options.AutoAdvance;
+        set => ChangeOptions(options with { AutoAdvance = value });
+    }
+
+    public bool FollowLyrics
+    {
+        get => options.FollowLyrics;
+        set => ChangeOptions(options with { FollowLyrics = value });
+    }
+
+    public bool DimInactiveLyrics
+    {
+        get => options.DimInactiveLyrics;
+        set => ChangeOptions(options with { DimInactiveLyrics = value });
+    }
+
+    private void ChangeOptions(PlayerOptions value, [CallerMemberName] string? property = null)
+    {
+        if (closing || options == value) return;
+        options = value;
+        if (!value.RememberPosition) resumeBookmark = null;
+        Notify(property);
+        if (pendingOptionsSave.IsCompleted) pendingOptionsSave = SaveOptionsChangesAsync();
+    }
+
+    private async Task SaveOptionsChangesAsync()
+    {
+        PlayerOptions snapshot;
+        do
+        {
+            snapshot = options;
+            await SavePreferenceAsync(() => preferences.SaveOptionsAsync(snapshot), "No se pudieron guardar los ajustes.");
+        } while (snapshot != options);
+    }
+
     public int VolumePercent
     {
         get => volumePercent;
@@ -171,6 +251,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public Task InitializeAsync() => RunAsync(async () =>
     {
+        if (Playlists is { } playlists) await playlists.InitializeAsync();
         PlaybackPreferences saved;
         try { saved = await preferences.ReadAsync(lifetime.Token); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -178,6 +259,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             WarnAboutPreferences("No se pudieron cargar las preferencias guardadas.");
             return;
         }
+
+        try { Library.RestoreFavorites(await preferences.ReadFavoritesAsync(lifetime.Token)); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            WarnAboutPreferences("No se pudieron cargar las canciones favoritas.");
+        }
+
+        options = saved.Options;
+        Notify(nameof(RememberPosition));
+        Notify(nameof(AutoAdvance));
+        Notify(nameof(FollowLyrics));
+        Notify(nameof(DimInactiveLyrics));
 
         if (saved.VolumePercent != appliedVolumePercent)
         {
@@ -195,7 +288,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
         lifetime.Token.ThrowIfCancellationRequested();
         if (saved.LibraryFolder is { } folder)
+        {
             await LoadFolderCoreAsync(folder, restoring: true);
+            if (RememberPosition && saved.Bookmark is { } bookmark &&
+                SongRows.FirstOrDefault(row => StringComparer.OrdinalIgnoreCase.Equals(row.Song.FilePath, bookmark.FilePath)) is { } row)
+            {
+                SelectedIndex = row.Index;
+                resumeBookmark = bookmark;
+                ShowStatus($"Lista para continuar: {row.Song.DisplayName} · {FormatPlaybackTime(bookmark.Position)}");
+            }
+        }
     });
 
     public Task LoadFolderAsync(string folder) => RunAsync(() => LoadFolderCoreAsync(folder, restoring: false));
@@ -218,13 +320,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             return;
         }
         HasImportedFolder = true;
+        resumeBookmark = null;
         Notify(nameof(HasImportedFolder));
         Songs = scannedSongs;
         SongRows = scannedSongs.Select((song, index) => new SongRow(song, index)).ToArray();
         Notify(nameof(SongRows));
+        SetQueueRows(SongRows);
         LibraryFolder = folder;
         Notify(nameof(LibraryFolder));
         Library.ReplaceRows(SongRows);
+        Playlists?.SetLibrary(SongRows);
         SelectedIndex = -1;
         Notify(nameof(CoverRow));
         if (Songs.Count == 0)
@@ -240,16 +345,53 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         var index = SelectedIndex;
         if (index < 0 || index >= Songs.Count) { ShowStatus("Selecciona una canción."); return; }
-        await PlayAsync(token => session.PlayAtAsync(index, token), "Selecciona una canción.");
+        await PlayAsync(token => ReferenceEquals(QueueRows, SongRows)
+            ? session.PlayAtAsync(index, token)
+            : StartQueueAsync(SongRows, index, token), "Selecciona una canción.");
     });
 
-    public Task PlayNextAsync() => RunTransportAsync(() =>
-        PlayAsync(session.PlayNextAsync, "No hay una canción siguiente."));
+    public Task PlayQueueRowAsync(SongRow row) => RunTransportAsync(async () =>
+    {
+        for (var index = 0; index < QueueRows.Count; index++)
+        {
+            if (QueueRows[index] != row) continue;
+            var queueIndex = index;
+            await PlayAsync(token => session.PlayAtAsync(queueIndex, token), "La pista ya no está en la cola.");
+            return;
+        }
+    });
 
-    public Task PlayRandomNextAsync() => RunTransportAsync(() =>
-        session.ChooseRandomNextIndex() is int index
-            ? PlayAsync(token => session.PlayAtAsync(index, token), "No hay otra canción en la cola.")
+    public Task PlayPlaylistAsync(IReadOnlyList<SongRow> rows, int startIndex) => RunTransportAsync(() =>
+        startIndex >= 0 && startIndex < rows.Count
+            ? PlayAsync(token => StartQueueAsync(rows, startIndex, token), "La playlist no tiene canciones disponibles.")
             : Task.CompletedTask);
+
+    private async Task<Song?> StartQueueAsync(IReadOnlyList<SongRow> rows, int index, CancellationToken token)
+    {
+        var song = await session.PlayQueueAsync(rows.Select(row => row.Song).ToArray(), index, token);
+        if (song is not null) SetQueueRows(rows);
+        return song;
+    }
+
+    private void SetQueueRows(IReadOnlyList<SongRow> rows)
+    {
+        QueueRows = rows;
+        Notify(nameof(QueueRows));
+        Notify(nameof(SelectedQueueRow));
+        Notify(nameof(CanPlayQueueSelected));
+    }
+
+    public Task PlayNextAsync() => RunTransportAsync(PlayNextInModeAsync);
+
+    private Task PlayNextInModeAsync()
+    {
+        if (!IsShuffleEnabled)
+            return PlayAsync(session.PlayNextAsync, "No hay una canción siguiente.");
+
+        return session.ChooseRandomNextIndex() is int index
+            ? PlayAsync(token => session.PlayAtAsync(index, token), "No hay otra canción en la cola.")
+            : Task.CompletedTask;
+    }
 
     public Task RetryPlaybackAsync() => CanRetryPlayback && retryPlayback is { } start
         ? RunTransportAsync(() => PlayAsync(start, "La pista ya no está en la cola."))
@@ -259,6 +401,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     {
         AudioState.Playing => PauseAsync(),
         AudioState.Paused => ResumeAsync(),
+        _ when SelectedQueueRow is { } row => PlayQueueRowAsync(row),
         _ => CanPlaySelected ? PlaySelectedAsync() : PlayNextAsync()
     };
 
@@ -341,7 +484,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
 
         if (song is not null)
         {
-            SelectedIndex = session.CurrentIndex ?? -1;
+            SelectedIndex = session.CurrentIndex is int index ? QueueRows[index].Index : -1;
             Library.RecordPlay(song);
         }
 
@@ -359,7 +502,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
             }
             ShowStatus(song is null ? unavailable : $"Reproduciendo: {song.DisplayName}");
             if (song is not null)
+            {
+                var bookmark = resumeBookmark;
+                resumeBookmark = null;
                 await ReadProgressAsync();
+                if (bookmark is not null && CurrentSong == song && progress is { } clock &&
+                    StringComparer.OrdinalIgnoreCase.Equals(song.FilePath, bookmark.FilePath) &&
+                    bookmark.Position > TimeSpan.Zero && bookmark.Position < clock.Duration)
+                {
+                    var moved = await seek.ExecuteAsync(bookmark.Position, lifetime.Token);
+                    if (CurrentSong == song && moved is { } snapshot) ApplyProgress(snapshot);
+                }
+            }
         }
     }
 
@@ -437,7 +591,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     internal Task<BitmapSource?> ReadThumbnailAsync(Song song, CancellationToken token)
         => Task.Run(() => DecodeCover(coverReader.ReadEmbeddedCover(song.FilePath), 72), token);
 
-    private static BitmapSource? DecodeCover(byte[]? bytes, int width = 640)
+    internal static BitmapSource? DecodeCover(byte[]? bytes, int width = 640)
     {
         if (bytes is not { Length: > 0 }) return null;
         using var stream = new MemoryStream(bytes, writable: false);
@@ -533,6 +687,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
+    private void QueueFavoriteSave(string path, bool isFavorite)
+        => pendingFavoritesSave = SaveFavoriteAfterAsync(pendingFavoritesSave, path, isFavorite);
+
+    private async Task SaveFavoriteAfterAsync(Task previous, string path, bool isFavorite)
+    {
+        await previous;
+        await SavePreferenceAsync(() => preferences.SaveFavoriteAsync(path, isFavorite),
+            "No se pudo guardar el cambio en Favoritas.");
+    }
+
     private void WarnAboutPreferences(string message)
     {
         PreferencesWarning = message;
@@ -606,8 +770,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
     private Task AdvanceAfterCompletionAsync()
     {
         advanceAfterCompletion = false;
-        if (session.CurrentIndex is not null && session.HasNext)
-            return ChangePlaybackAsync(() => PlayAsync(session.PlayNextAsync, "No hay una canción siguiente."));
+        if (AutoAdvance && session.CurrentIndex is not null && HasNextInMode)
+            return ChangePlaybackAsync(PlayNextInModeAsync);
 
         ShowPlaybackFinished();
         return Task.CompletedTask;
@@ -625,11 +789,19 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         closing = true;
         NotifyControls();
         player.PlaybackEnded -= OnPlaybackEnded;
+        Library.FavoriteChanged -= QueueFavoriteSave;
         lifetime.Cancel();
         try
         {
             await Task.WhenAll(pending, pendingVolume, pendingProgress, pendingCover, Lyrics.CloseAsync());
-            await pendingVolumeSave;
+            if (Playlists is { } playlists) await playlists.Pending;
+            await Task.WhenAll(pendingVolumeSave, pendingOptionsSave, pendingFavoritesSave);
+            if (RememberPosition && HasImportedFolder)
+            {
+                var bookmark = CurrentSong is { } song
+                    ? new PlaybackBookmark(song.FilePath, progress?.Elapsed ?? TimeSpan.Zero) : resumeBookmark;
+                await SavePreferenceAsync(() => preferences.SaveBookmarkAsync(bookmark), "No se pudo guardar el punto de reproducción.");
+            }
         }
         finally { lifetime.Dispose(); }
     }
@@ -651,15 +823,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IAsyncDisposable
         Notify(nameof(IsReady));
         Notify(nameof(CurrentSong));
         Notify(nameof(CurrentSongIndex));
+        Notify(nameof(CurrentQueueIndex));
         Notify(nameof(PlaybackLabel));
         Notify(nameof(CoverLabel));
         Notify(nameof(IsPlaying));
         Notify(nameof(TransportLabel));
         Notify(nameof(CanPlaySelected));
+        Notify(nameof(CanPlayQueueSelected));
         Notify(nameof(CanRetryPlayback));
         Notify(nameof(CanTogglePlayback));
         Notify(nameof(CanNext));
-        Notify(nameof(CanRandomNext));
         Notify(nameof(CanPrevious));
         Notify(nameof(CanPause));
         Notify(nameof(CanResume));

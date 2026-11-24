@@ -11,8 +11,9 @@
                 <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <ImageBrush x:Key="LibraryAmbient" ImageSource="../Resources/Art/LibraryAmbient.png" Stretch="Fill" />
+            <Thickness x:Key="RailLinkMargin">0,3</Thickness>
             <Style x:Key="RailLink" TargetType="RadioButton" BasedOn="{StaticResource Nav}">
-                <Setter Property="Margin" Value="0,3" />
+                <Setter Property="Margin" Value="{DynamicResource RailLinkMargin}" />
                 <Setter Property="ContentTemplate">
                     <Setter.Value><DataTemplate><StackPanel Orientation="Horizontal">
                         <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="18" Width="23" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
@@ -65,6 +66,45 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+            <Style x:Key="ShuffleTransport" TargetType="ToggleButton">
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Margin" Value="3,0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                <Setter Property="ToolTip" Value="Activar modo aleatorio" />
+                <Setter Property="AutomationProperties.Name" Value="Modo aleatorio" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Surface" Background="{StaticResource ControlBrush}" BorderBrush="Transparent"
+                                    BorderThickness="1" CornerRadius="9">
+                                <TextBlock Text="&#xE8B1;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{TemplateBinding Foreground}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Surface" Property="Background" Value="{StaticResource HoverBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Surface" Property="Background" Value="#174740" />
+                                    <Setter TargetName="Surface" Property="BorderBrush" Value="#48EDBD" />
+                                    <Setter Property="Foreground" Value="#68F6CF" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource InkBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="ToolTip" Value="Desactivar modo aleatorio" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <Style x:Key="PrimaryTransport" TargetType="Button" BasedOn="{StaticResource Transport}">
                 <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
                 <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
@@ -102,6 +142,8 @@
                         <RadioButton x:Name="Library" Content="Biblioteca" Tag="&#xE8F1;" ToolTip="Biblioteca" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="True" />
                         <RadioButton x:Name="NowPlaying" Content="Reproducción" Tag="&#xE768;" ToolTip="Reproducción" GroupName="Screen" Style="{StaticResource RailLink}" />
                         <RadioButton x:Name="LyricsTab" Content="Letras" Tag="&#xE8A4;" ToolTip="Letras" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="{Binding Lyrics.IsOpen, Mode=TwoWay}" />
+                        <RadioButton x:Name="PlaylistsTab" Content="Playlists" Tag="&#xE8D6;" ToolTip="Playlists" GroupName="Screen" Style="{StaticResource RailLink}" />
+                        <RadioButton x:Name="SettingsTab" Content="Configuración" Tag="&#xE713;" ToolTip="Configuración" GroupName="Screen" Style="{StaticResource RailLink}" />
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" x:Name="FolderInfo" Margin="10,5">
                         <TextBlock Text="Carpeta de música" Style="{StaticResource Caption}" />
@@ -119,6 +161,7 @@
                     <views:LibraryView x:Name="LibraryScreen" ImportRequested="ChooseFolder" />
                 </Grid>
                 <views:LyricsView DataContext="{Binding Lyrics}"
+                                  FollowLyrics="{Binding DataContext.FollowLyrics, RelativeSource={RelativeSource AncestorType=Window}}"
                                   AmbientCover="{Binding DataContext.AmbientCoverImage, RelativeSource={RelativeSource AncestorType=Window}}">
                     <views:LyricsView.Style>
                         <Style TargetType="views:LyricsView">
@@ -142,6 +185,32 @@
                         </Style>
                     </views:NowPlayingView.Style>
                 </views:NowPlayingView>
+
+                <views:PlaylistsView x:Name="PlaylistsScreen" DataContext="{Binding Playlists}">
+                    <views:PlaylistsView.Style>
+                        <Style TargetType="views:PlaylistsView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=PlaylistsTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </views:PlaylistsView.Style>
+                </views:PlaylistsView>
+
+                <views:SettingsView x:Name="SettingsScreen" ImportRequested="ChooseFolder">
+                    <views:SettingsView.Style>
+                        <Style TargetType="views:SettingsView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=SettingsTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </views:SettingsView.Style>
+                </views:SettingsView>
 
                 <Border x:Name="StatusBanner" Grid.Row="1" Margin="16,0,16,4" CornerRadius="8">
                     <Border.Style>
@@ -355,6 +424,22 @@
                                         <TextBlock Text="Letra de la pista actual" Style="{StaticResource Caption}" />
                                     </StackPanel>
                                 </Button>
+                                <Button x:Name="MenuPlaylists" Style="{StaticResource MenuRoute}" Tag="&#xE8D6;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=PlaylistsTab, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=PlaylistsTab}" Click="NavigateFromMenu" AutomationProperties.Name="Playlists">
+                                    <StackPanel>
+                                        <TextBlock Text="Playlists" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Listas de reproducción guardadas" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuSettings" Style="{StaticResource MenuRoute}" Tag="&#xE713;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=SettingsTab, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=SettingsTab}" Click="NavigateFromMenu" AutomationProperties.Name="Configuración">
+                                    <StackPanel>
+                                        <TextBlock Text="Configuración" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Biblioteca, reproducción y letras" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="MenuImport" Style="{StaticResource MenuRoute}" Tag="&#xE8B7;"
                                         Click="ImportFromMenu" IsEnabled="{Binding IsReady}" AutomationProperties.Name="Importar música">
                                     <StackPanel>
@@ -417,10 +502,8 @@
                         <Button Style="{StaticResource Transport}" Click="PlayNext" ToolTip="Siguiente" IsEnabled="{Binding CanNext}">
                             <Image Source="{StaticResource Next}" Width="18" />
                         </Button>
-                        <Button x:Name="RandomNextButton" Style="{StaticResource Transport}" Click="PlayRandomNext"
-                                ToolTip="Siguiente aleatoria" IsEnabled="{Binding CanRandomNext}">
-                            <TextBlock Text="&#xE8B1;" FontFamily="Segoe MDL2 Assets" FontSize="17" />
-                        </Button>
+                        <ToggleButton x:Name="ShuffleButton" Style="{StaticResource ShuffleTransport}"
+                                      IsChecked="{Binding IsShuffleEnabled, Mode=TwoWay}" />
                         <Button Style="{StaticResource Transport}" Click="Stop" ToolTip="Detener" IsEnabled="{Binding CanStop}">
                             <Border Width="12" Height="12" Background="{StaticResource InkBrush}" CornerRadius="2" />
                         </Button>

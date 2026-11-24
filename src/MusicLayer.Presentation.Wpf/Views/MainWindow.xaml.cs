@@ -39,8 +39,9 @@ public partial class MainWindow : Window
             Brand.Visibility = FolderInfo.Visibility = MenuButtonLabel.Visibility =
                 compact ? Visibility.Collapsed : Visibility.Visible;
             bool shortWindow = ActualHeight < 530;
+            Resources["RailLinkMargin"] = new Thickness(0, shortWindow ? 0 : 3, 0, shortWindow ? 0 : 3);
             NavigationPanel.Margin = new Thickness(10, shortWindow ? 10 : 54, 10, 10);
-            var routePadding = shortWindow ? 5 : 8;
+            var routePadding = shortWindow ? 2 : 8;
             Resources["MenuRoutePadding"] = new Thickness(12, routePadding, 12, routePadding);
         };
         PreviewKeyDown += HandleNavigationKeys;
@@ -82,7 +83,9 @@ public partial class MainWindow : Window
         NavigationOverlay.Visibility = Visibility.Visible;
         SetScreenTabNavigation(KeyboardNavigationMode.None);
         NavigationOverlay.UpdateLayout();
-        var active = LyricsTab.IsChecked == true ? MenuLyrics
+        var active = SettingsTab.IsChecked == true ? MenuSettings
+            : PlaylistsTab.IsChecked == true ? MenuPlaylists
+            : LyricsTab.IsChecked == true ? MenuLyrics
             : NowPlaying.IsChecked == true ? MenuNowPlaying
             : MenuLibrary;
         active.Focus();
@@ -134,9 +137,6 @@ public partial class MainWindow : Window
 
     private async void PlayNext(object sender, RoutedEventArgs e)
         => await viewModel.PlayNextAsync();
-
-    private async void PlayRandomNext(object sender, RoutedEventArgs e)
-        => await viewModel.PlayRandomNextAsync();
 
     private async void TogglePlayback(object sender, RoutedEventArgs e)
         => await viewModel.TogglePlaybackAsync();

@@ -28,6 +28,7 @@ public partial class App : System.Windows.Application
             .AddSingleton<ITrackMetadataReader, TagLibTrackMetadataReader>()
             .AddSingleton<ICoverArtReader, TagLibCoverArtReader>()
             .AddSingleton<IPlaybackPreferencesRepository>(_ => new SqlitePlaybackPreferencesRepository())
+            .AddSingleton<IPlaylistRepository>(_ => new SqlitePlaylistRepository())
             .AddSingleton(_ => CreateLyricsHttpClient())
             .AddSingleton<LrclibClient>()
             .AddSingleton<ILyricsCache>(_ => new JsonLyricsCache(Path.Combine(

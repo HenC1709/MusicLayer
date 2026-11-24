@@ -2,14 +2,14 @@
 
 Reproductor de música de escritorio para Windows, desarrollado en C# con WPF y organizado en capas. El repositorio de preferencias locales usa SQLite.
 
-## Alcance del MVP
+## Funciones
 
-- Cargar una carpeta y construir una biblioteca con archivos MP3, WAV y FLAC.
-- Reproducir, pausar y detener canciones; navegar por la cola.
-- Mostrar el nombre del archivo actual y ofrecer controles de volumen y progreso.
-- Mostrar errores de lectura, archivos dañados, carpetas vacías y formatos no admitidos.
-
-Tonic lee el título, artista y álbum incrustados en archivos MP3, WAV y FLAC y muestra sus carátulas incrustadas compatibles. La persistencia SQLite forma parte del Sprint 4. Las playlists, el modo aleatorio, repeat, el ecualizador y una versión móvil quedan para después del MVP.
+- **Biblioteca.** Importa carpetas con archivos MP3, WAV y FLAC. Busca por título, artista, álbum o género, consulta las carátulas y organiza las pistas por categorías.
+- **Favoritas.** Marca o quita canciones desde Biblioteca y Reproducción. La categoría Favoritas muestra las pistas marcadas de la carpeta actual.
+- **Reproducción.** Controla la cola, el volumen y la posición. Reproducción muestra la carátula, los metadatos y una forma de onda cuando hay espacio. Las flechas cruzadas activan el modo aleatorio para la cola de la biblioteca o de una playlist.
+- **Letras.** Lee archivos `.lrc` locales y usa LRCLIB como respaldo. Sigue el verso activo, ilumina las palabras progresivamente y permite ajustar el tamaño del texto.
+- **Playlists.** Crea listas con nombre y, si quieres, añade género, descripción y portada JPG o PNG. Puedes editar la lista, reordenar sus canciones y reproducirlas en ese orden.
+- **Configuración.** Cambia la carpeta y el volumen, controla el avance automático y ajusta el seguimiento y la atenuación de los versos. Puedes activar **Recordar dónde me quedé**.
 
 ## Estructura
 
@@ -31,42 +31,42 @@ Tonic lee el título, artista y álbum incrustados en archivos MP3, WAV y FLAC y
 3. **Sprint 3 — Interfaz y MVP:** ventana WPF, controles, progreso, trabajo fuera del hilo de UI y errores visibles.
 4. **Sprint 4 — Pulido y entrega.** Tonic muestra metadatos y carátulas de MP3, WAV y FLAC y guarda sus preferencias en SQLite. Queda la verificación final en Windows.
 
-Tonic recuerda la última carpeta importada correctamente y el volumen. Al abrir, vuelve a escanear esa carpeta y espera a que inicies la reproducción. Si la carpeta se movió o perdió sus permisos, puedes elegir otra. El plan detallado se mantiene en el archivo local `docs/SPRINTS.md`.
+Al abrir, Tonic vuelve a escanear la última carpeta importada correctamente y espera a que inicies la reproducción. Si la carpeta se movió o perdió sus permisos, puedes elegir otra. El plan detallado se mantiene en el archivo local `docs/SPRINTS.md`.
 
 ### Refactor visual
 
-La Biblioteca sigue la composición de la referencia 01 de Guide. La próxima pantalla es **Letras**. El [seguimiento del refactor visual](progress.md) recoge los archivos de referencia, las tareas restantes y sus criterios de aceptación.
+El [seguimiento del refactor visual](progress.md) reúne las referencias y las comprobaciones de Biblioteca, Reproducción, Letras, Playlists, Configuración, el menú y los estados de la interfaz.
 
 ## Decisiones iniciales
 
 - Aplicación de escritorio Windows con WPF y .NET 10.
 - NAudio reproduce el audio. TagLibSharp lee las etiquetas de texto de los formatos compatibles y sus carátulas incrustadas.
-- El repositorio de preferencias crea `%LocalAppData%\MusicLayer\preferences.db` en su primera operación. Usa `Microsoft.Data.Sqlite` desde Infrastructure.
+- Tonic crea `%LocalAppData%\MusicLayer\preferences.db` con `Microsoft.Data.Sqlite`. Allí guarda la carpeta, el volumen, los ajustes de reproducción y letras, las playlists con sus portadas y las favoritas. Las favoritas se identifican por la ruta del archivo y se conservan aunque importes otra carpeta.
 - Domain y Application no dependerán de WPF, SQLite ni de la implementación concreta del audio.
 
 ## Empezar
 
 Abre `MusicLayer.sln` en Visual Studio con la carga de trabajo de .NET Desktop instalada, o ejecuta `dotnet build MusicLayer.sln` con el SDK de .NET 10. La primera restauración descarga las dependencias desde NuGet.
 
-Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` y pulsa **Importar carpeta** en Biblioteca. Usa **Ctrl+F** para buscar por título, artista, álbum o género. Puedes ordenar la tabla, marcar favoritas o consultar las pistas reproducidas durante la sesión. Haz doble clic en una fila o pulsa **Enter** para escucharla. **Reproducir** inicia la primera pista visible y el botón aleatorio elige una de las pistas visibles. Siguiente y anterior recorren la cola original de la carpeta.
+Ejecuta `dotnet run --project src/MusicLayer.Presentation.Wpf` y pulsa **Importar carpeta** en Biblioteca. Usa **Ctrl+F** para buscar. Haz doble clic en una fila o pulsa **Enter** para escucharla. **Reproducir** en Biblioteca inicia la primera pista visible. Su botón **Reproducir una pista al azar** elige una de las pistas visibles. **Recientes** muestra las pistas reproducidas durante la sesión.
 
 Con el reproductor detenido, selecciona un MP3, WAV o FLAC para ver su carátula en el panel. Tonic prefiere la imagen marcada como portada frontal. Si esa etiqueta falta, usa la primera imagen incrustada disponible. Durante la reproducción y la pausa, el panel y la barra inferior muestran la portada de la pista activa aunque selecciones otra fila. Si falta una portada legible, el panel de Biblioteca muestra el planeta del diseño de referencia.
 
-En **Letras**, una cabecera compacta reúne la miniatura, el título y los datos disponibles de artista y álbum. Los versos ocupan todo el ancho del panel debajo de la cabecera.
+Abre **Reproducción** para ver la pista activa y su cola. Si falta el título, Tonic muestra el nombre del archivo. Todas las vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia la pista elegida en la cola.
 
-Abre **Ahora suena** para ver la pista activa y su cola. El panel muestra título, artista y álbum si están disponibles. Si falta el título, Tonic muestra el nombre del archivo. Todas las vistas comparten la barra inferior. Su botón central permite reproducir, pausar y reanudar desde la misma posición. **Reproducir selección** inicia el archivo elegido desde el principio.
-
-Abre **Letras** mientras suena una canción o está en pausa. Una barra esmeralda marca el verso activo, que aparece en blanco. El verso anterior y el siguiente tienen un contraste intermedio. Si Windows tiene las animaciones habilitadas, el verso activo se desplaza suavemente al entrar. Toca o haz clic en un verso sincronizado para saltar a su comienzo. Si la canción está en pausa, puedes elegir el verso y pulsar **Reanudar** cuando quieras escucharlo. Puedes desplazarte para leer otra parte y pulsar **Seguir línea actual** para volver. Si la letra solo tiene texto, se lee con desplazamiento manual. La vista también indica cuándo una pista es instrumental, cuándo falta la letra y cuándo el servicio está temporalmente indisponible.
+Abre **Letras** durante la reproducción o la pausa. Puedes pulsar un verso sincronizado para saltar a su comienzo y usar **↑** o **↓** para ajustar el texto entre 80 % y 160 %. Si desplazas los versos manualmente, el seguimiento vuelve al verso activo después de unos segundos cuando está habilitado. Las letras sin sincronizar se desplazan manualmente. La vista avisa si la pista es instrumental, si falta la letra o si el servicio está temporalmente indisponible.
 
 Para usar una letra propia, guarda el archivo `.lrc` en la misma carpeta y con el mismo nombre base que el audio. Por ejemplo, `Canción.flac` y `Canción.lrc`. Tonic lee ese archivo al abrir **Letras**, incluso si el audio carece de etiquetas.
 
 Si falta una letra local válida, Tonic revisa la caché en `%LocalAppData%\MusicLayer\LyricsCache`. Si necesita consultar LRCLIB, usa el título y artista de las etiquetas, junto con el álbum y la duración disponibles. Una letra ya guardada para esa versión se puede leer sin conexión. Al cambiar de canción o de vista, la consulta pendiente se cancela.
 
-Usa **Anterior** y **Siguiente** para recorrer la cola en el orden de la lista. Antes de la primera reproducción, **Siguiente** inicia la primera canción. Al llegar a un extremo, la dirección que ya no tiene destino se deshabilita.
+Usa **Anterior** y **Siguiente** para recorrer la cola de la carpeta o playlist. Al activar las **flechas cruzadas** de la barra inferior, **Siguiente** y el avance automático eligen otra canción al azar dentro de esa cola. Con las flechas desactivadas, el avance sigue el orden de la lista.
 
 **Detener** corta el audio y libera el archivo, incluso cuando está en pausa. La cola conserva la posición para seguir navegando con **Anterior** y **Siguiente**.
 
 Usa **Volumen** para ajustar el sonido de 0 a 100 antes o durante la reproducción. **0** silencia el audio sin detenerlo. Tonic recupera el último volumen aplicado al volver a abrir. En el primer arranque, el volumen empieza en 100.
+
+Si activas **Recordar dónde me quedé** en Configuración, Tonic selecciona la última pista al reabrir. Pulsa **Reproducir** para retomarla desde el punto guardado. El tema activo es Oscuro. Las opciones Claro y Según el sistema están previstas para futuras versiones.
 
 Haz clic en la **barra de progreso** o arrastra el control y suéltalo para adelantar o retroceder. También puedes darle foco con **Tab** y usar las flechas. El verso activo se actualiza al aplicar el salto. Si saltas en pausa, pulsa **Reanudar** para continuar desde el nuevo punto. La barra vuelve a cero al detener o finalizar.
 

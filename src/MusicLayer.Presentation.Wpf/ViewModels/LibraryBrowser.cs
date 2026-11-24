@@ -31,6 +31,7 @@ public sealed class LibraryBrowser : INotifyPropertyChanged
     private readonly Dictionary<string, long> lastPlayed = new(StringComparer.OrdinalIgnoreCase);
     private long playOrder;
     private IReadOnlyList<SongRow> source = [];
+    internal event Action<string, bool>? FavoriteChanged;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public IReadOnlyList<SongRow> Rows { get; private set; } = [];
@@ -90,6 +91,8 @@ public sealed class LibraryBrowser : INotifyPropertyChanged
         }
     }
 
+    internal void RestoreFavorites(IEnumerable<string> paths) => favorites.UnionWith(paths);
+
     internal void ReplaceRows(IReadOnlyList<SongRow> rows)
     {
         foreach (var row in source) row.PropertyChanged -= OnFavoriteChanged;
@@ -126,6 +129,7 @@ public sealed class LibraryBrowser : INotifyPropertyChanged
                 other.IsFavorite = row.IsFavorite;
         }
         if (Section == "Favoritas") RefreshRows();
+        FavoriteChanged?.Invoke(path, row.IsFavorite);
     }
 
     private void RefreshGroups()

@@ -4,7 +4,22 @@
              xmlns:views="clr-namespace:MusicLayer.Presentation.Wpf.Views"
              Loaded="OnLoaded" Unloaded="OnUnloaded" DataContextChanged="ContextChanged">
     <UserControl.Resources>
-        <BitmapImage x:Key="FallbackCover" UriSource="../Resources/Art/LibraryArtwork.png" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BitmapImage x:Key="FallbackCover" UriSource="../Resources/Art/LibraryArtwork.png" />
+            <Style x:Key="TextSizeArrow" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Width" Value="34" />
+                <Setter Property="MinHeight" Value="30" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="#193D42" />
+                <Setter Property="BorderBrush" Value="#396A6C" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}" />
+                <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
     <DockPanel x:Name="Layout" SizeChanged="ResizeComposition">
         <DockPanel.Background>
@@ -35,10 +50,14 @@
                 <RowDefinition Height="Auto" /><RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <DockPanel Margin="0,0,0,6">
-                <TextBlock DockPanel.Dock="Right" Text="LRC · LRCLIB" FontSize="12"
-                           Foreground="{DynamicResource SecondaryBrush}" VerticalAlignment="Center"
-                           ToolTip="Primero se lee el archivo LRC junto al audio. Al consultar LRCLIB se envían el título, el artista, el álbum y la duración disponibles."
-                           AutomationProperties.HelpText="Primero se lee el archivo LRC junto al audio. Al consultar LRCLIB se envían el título, el artista, el álbum y la duración disponibles." />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0" IsEnabled="{Binding HasLyrics}">
+                    <Button x:Name="SmallerLyrics" Content="↓" ToolTip="Reducir tamaño de letra" Style="{StaticResource TextSizeArrow}"
+                            Click="DecreaseTextSize" />
+                    <TextBlock x:Name="LyricsScaleLabel" Text="100 %" Width="44" FontSize="12" TextAlignment="Center"
+                               VerticalAlignment="Center" Foreground="{DynamicResource SecondaryBrush}" />
+                    <Button x:Name="LargerLyrics" Content="↑" ToolTip="Aumentar tamaño de letra" Style="{StaticResource TextSizeArrow}"
+                            Click="IncreaseTextSize" />
+                </StackPanel>
                 <WrapPanel>
                     <TextBlock Text="Letras" FontSize="18" FontWeight="SemiBold" Margin="0,0,12,0" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding Status}" Foreground="{DynamicResource SecondaryBrush}" FontSize="13"
@@ -51,6 +70,10 @@
                             </Style.Triggers></Style>
                         </TextBlock.Style>
                     </TextBlock>
+                    <TextBlock Text="LRC · LRCLIB" FontSize="12" Margin="10,0,0,0"
+                               Foreground="{DynamicResource SecondaryBrush}" VerticalAlignment="Center"
+                               ToolTip="Primero se lee el archivo LRC junto al audio. Al consultar LRCLIB se envían el título, el artista, el álbum y la duración disponibles."
+                               AutomationProperties.HelpText="Primero se lee el archivo LRC junto al audio. Al consultar LRCLIB se envían el título, el artista, el álbum y la duración disponibles." />
                 </WrapPanel>
             </DockPanel>
             <ScrollViewer x:Name="LyricsState" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
@@ -178,6 +201,14 @@
                                         </DataTrigger>
                                         <MultiDataTrigger>
                                             <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsActive}" Value="False" />
+                                                <Condition Binding="{Binding DataContext.DimInactiveLyrics, RelativeSource={RelativeSource AncestorType=Window}}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+                                            <Setter Property="Opacity" Value="1" />
+                                        </MultiDataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
                                                 <Condition Binding="{Binding IsActive}" Value="True" />
                                                 <Condition Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True" />
                                             </MultiDataTrigger.Conditions>
@@ -220,7 +251,7 @@
                         </DataTrigger></Style.Triggers>
                     </Style>
                 </ScrollViewer.Style>
-                <TextBlock Text="{Binding PlainText}" TextWrapping="Wrap" FontSize="23" LineHeight="34"
+                <TextBlock Text="{Binding PlainText}" TextWrapping="Wrap" FontSize="{DynamicResource PlainVerseSize}" LineHeight="{DynamicResource PlainVerseLineHeight}"
                            Margin="18,8,6,8" Foreground="{DynamicResource InkBrush}" />
             </ScrollViewer>
         </Grid>

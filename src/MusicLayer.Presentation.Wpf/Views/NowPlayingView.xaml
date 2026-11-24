@@ -1,6 +1,7 @@
 <UserControl x:Class="MusicLayer.Presentation.Wpf.Views.NowPlayingView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:MusicLayer.Presentation.Wpf.Views"
              SizeChanged="ResizeView">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -73,7 +74,7 @@
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource LibraryButton}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                <DataTrigger Binding="{Binding QueueRows.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </Button.Style>
@@ -89,46 +90,80 @@
                 </Grid.ColumnDefinitions>
                 <ScrollViewer x:Name="HeroScroll" VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                    <DockPanel>
-                        <Border x:Name="CoverFrame" DockPanel.Dock="Left" Width="240" Height="240"
-                                CornerRadius="21" BorderBrush="#577D80" BorderThickness="1"
-                                HorizontalAlignment="Left" VerticalAlignment="Center">
-                            <Border.Background>
-                                <ImageBrush ImageSource="{Binding CoverImage, TargetNullValue={StaticResource LibraryArtwork}}"
-                                            Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
-                            </Border.Background>
-                        </Border>
-                        <StackPanel x:Name="Details" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding CoverLabel}" Foreground="{StaticResource Mint}" FontSize="12" />
-                            <TextBlock x:Name="TrackTitle" Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
-                                       FontSize="34" FontWeight="Bold" TextWrapping="Wrap" LineStackingStrategy="BlockLineHeight"
-                                       ToolTip="{Binding CoverSong.DisplayName}" />
-                            <TextBlock x:Name="Artist" Text="{Binding CoverSong.Metadata.Artist, TargetNullValue='', FallbackValue=''}"
-                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="19"
-                                       Foreground="{StaticResource Muted}" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
-                            <TextBlock Text="{Binding CoverSong.Metadata.Album, TargetNullValue='', FallbackValue=''}"
-                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Style="{StaticResource OptionalMetadata}" />
-                            <WrapPanel Margin="0,4,0,0">
-                                <TextBlock Text="{Binding CoverSong.FileFormat, FallbackValue=''}" Margin="0,0,8,0"
-                                           Foreground="{StaticResource Mint}" FontSize="12" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
-                                <TextBlock Text="{Binding CoverAudioDetails}" Foreground="{StaticResource Muted}" FontSize="12" Style="{StaticResource OptionalMetadata}" />
-                            </WrapPanel>
-                            <WrapPanel x:Name="Actions" Margin="0,14,0,0">
-                                <Button x:Name="PrimaryAction" Content="{Binding TransportLabel}" Click="TogglePlayback" IsEnabled="{Binding CanTogglePlayback}"
-                                        Background="{StaticResource Mint}" Foreground="#092A26" FontWeight="Bold" Margin="0,0,6,4" />
-                                <ToggleButton x:Name="FavoriteAction" Style="{StaticResource TrackFavorite}"
-                                              IsChecked="{Binding CoverRow.IsFavorite, Mode=TwoWay, FallbackValue=False}"
-                                              AutomationProperties.Name="Favorita" Margin="0,0,6,4" />
-                                <Button x:Name="MoreActions" Style="{StaticResource LibraryButton}" Width="36" Padding="0"
-                                        IsEnabled="False" AutomationProperties.Name="Más opciones"
-                                        ToolTip="Más opciones próximamente" ToolTipService.ShowOnDisabled="True" Margin="0,0,6,4">
-                                    <TextBlock Text="&#xE712;" Style="{StaticResource Glyph}" />
-                                </Button>
-                                <Button Content="Letras" Click="OpenLyrics"
-                                        Background="{StaticResource RaisedBrush}" BorderBrush="#385E66" Margin="0,0,0,4" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </DockPanel>
+                    <StackPanel>
+                        <DockPanel>
+                            <Border x:Name="CoverFrame" DockPanel.Dock="Left" Width="240" Height="240"
+                                    CornerRadius="21" BorderBrush="#577D80" BorderThickness="1"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center">
+                                <Border.Background>
+                                    <ImageBrush ImageSource="{Binding CoverImage, TargetNullValue={StaticResource LibraryArtwork}}"
+                                                Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+                                </Border.Background>
+                            </Border>
+                            <StackPanel x:Name="Details" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CoverLabel}" Foreground="{StaticResource Mint}" FontSize="12" />
+                                <TextBlock x:Name="TrackTitle" Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
+                                           FontSize="34" FontWeight="Bold" TextWrapping="Wrap" LineStackingStrategy="BlockLineHeight"
+                                           ToolTip="{Binding CoverSong.DisplayName}" />
+                                <TextBlock x:Name="Artist" Text="{Binding CoverSong.Metadata.Artist, TargetNullValue='', FallbackValue=''}"
+                                           ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="19"
+                                           Foreground="{StaticResource Muted}" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
+                                <TextBlock Text="{Binding CoverSong.Metadata.Album, TargetNullValue='', FallbackValue=''}"
+                                           ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Style="{StaticResource OptionalMetadata}" />
+                                <WrapPanel Margin="0,4,0,0">
+                                    <TextBlock Text="{Binding CoverSong.FileFormat, FallbackValue=''}" Margin="0,0,8,0"
+                                               Foreground="{StaticResource Mint}" FontSize="12" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
+                                    <TextBlock Text="{Binding CoverAudioDetails}" Foreground="{StaticResource Muted}" FontSize="12" Style="{StaticResource OptionalMetadata}" />
+                                </WrapPanel>
+                                <WrapPanel x:Name="Actions" Margin="0,14,0,0">
+                                    <Button x:Name="PrimaryAction" Content="{Binding TransportLabel}" Click="TogglePlayback" IsEnabled="{Binding CanTogglePlayback}"
+                                            Background="{StaticResource Mint}" Foreground="#092A26" FontWeight="Bold" Margin="0,0,6,4" />
+                                    <ToggleButton x:Name="FavoriteAction" Style="{StaticResource TrackFavorite}"
+                                                  IsChecked="{Binding CoverRow.IsFavorite, Mode=TwoWay, FallbackValue=False}"
+                                                  AutomationProperties.Name="Favorita" Margin="0,0,6,4" />
+                                    <Button x:Name="MoreActions" Style="{StaticResource LibraryButton}" Width="36" Padding="0"
+                                            IsEnabled="False" AutomationProperties.Name="Más opciones"
+                                            ToolTip="Más opciones próximamente" ToolTipService.ShowOnDisabled="True" Margin="0,0,6,4">
+                                        <TextBlock Text="&#xE712;" Style="{StaticResource Glyph}" />
+                                    </Button>
+                                    <Button Content="Letras" Click="OpenLyrics"
+                                            Background="{StaticResource RaisedBrush}" BorderBrush="#385E66" Margin="0,0,0,4" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </DockPanel>
+                        <Grid x:Name="WaveformPanel" Margin="0,18,0,0" Visibility="Collapsed">
+                            <Border CornerRadius="14" Padding="14,8" BorderThickness="1" BorderBrush="#294D55">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#CC102D36" Offset="0" />
+                                        <GradientStop Color="#DC0A1D27" Offset="1" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentSong}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <DockPanel>
+                                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,7">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <TextBlock Text="{Binding ElapsedTimeText}" Foreground="{StaticResource Mint}" FontSize="12" />
+                                            <TextBlock Text=" / " Style="{StaticResource SmallLabel}" />
+                                            <TextBlock Text="{Binding DurationText}" Style="{StaticResource SmallLabel}" />
+                                        </StackPanel>
+                                        <TextBlock Text="Forma de onda" Style="{StaticResource SmallLabel}" FontWeight="SemiBold" />
+                                    </DockPanel>
+                                    <views:TrackWaveform x:Name="Waveform" TrackPath="{Binding CurrentSong.FilePath}"
+                                                         Progress="{Binding ProgressFraction}" Focusable="False"
+                                                         AutomationProperties.Name="Forma de onda de la pista" />
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
                 </ScrollViewer>
                 <Border x:Name="QueuePanel" Grid.Column="2" Style="{StaticResource Panel}" Padding="10">
                     <Grid>
@@ -138,12 +173,12 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <DockPanel Margin="2,2,2,9">
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding Songs.Count}" Style="{StaticResource SmallLabel}"
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding QueueRows.Count}" Style="{StaticResource SmallLabel}"
                                        AutomationProperties.Name="Número de pistas" Margin="8,0,4,0" />
                             <TextBlock Text="Cola de reproducción" FontSize="16" FontWeight="SemiBold" />
                         </DockPanel>
-                        <ListBox x:Name="QueueList" Grid.Row="1" ItemsSource="{Binding SongRows}"
-                                 SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}" Background="Transparent"
+                        <ListBox x:Name="QueueList" Grid.Row="1" ItemsSource="{Binding QueueRows}"
+                                 SelectedItem="{Binding SelectedQueueRow, Mode=TwoWay}" Background="Transparent"
                                  BorderThickness="0" Padding="0" ItemContainerStyle="{StaticResource QueueRow}"
                                  VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  AutomationProperties.Name="Cola de reproducción" MouseDoubleClick="ActivateRow"
@@ -168,7 +203,7 @@
                                 <Style TargetType="StackPanel">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding QueueRows.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </StackPanel.Style>
@@ -176,12 +211,12 @@
                             <Button Content="Importar carpeta" Click="ImportFolder" IsEnabled="{Binding IsReady}"
                                     Margin="0,8,0,0" HorizontalAlignment="Left" />
                         </StackPanel>
-                        <Button Grid.Row="2" Click="PlaySelection" IsEnabled="{Binding CanPlaySelected}"
+                        <Button Grid.Row="2" Click="PlaySelection" IsEnabled="{Binding CanPlayQueueSelected}"
                                 Content="Reproducir selección" HorizontalAlignment="Left" Margin="2,5,0,0">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                        <DataTrigger Binding="{Binding QueueRows.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>

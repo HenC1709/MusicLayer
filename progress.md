@@ -1,6 +1,6 @@
 # Relevo del refactor visual de Tonic
 
-**Punto de partida · 22 de noviembre de 2026.** La Biblioteca ya tiene su propia vista WPF. La composición de Letras está implementada. Letras ya tiene composición, seguimiento automático y fondo por carátula. Reproducción activa ya tiene su propia vista. El menú expandido ya está implementado. Los estados y sus acciones de recuperación ya están implementados. La siguiente entrega visual es **tarea 7 · Playlists**, pendiente de acordar el alcance de creación, edición y persistencia. Trabajar una pantalla por PR y actualizar aquí el estado y las pruebas al cerrarla. La tarea 5 del MVP 4 (entrega y verificación en Windows) sigue su propio calendario.
+**Estado · 23 de noviembre de 2026.** Biblioteca, Letras, Reproducción activa, Playlists y Configuración tienen su propia vista WPF. El menú expandido comunica las pantallas. Los estados y sus acciones de recuperación están implementados. La tarea 5 del MVP 4 (entrega y verificación en Windows) sigue su propio calendario.
 
 ## Cómo retomar
 
@@ -13,7 +13,7 @@
 Referencia: `Guide/biblioteca.png`. La barra lateral contiene la marca y las tres vistas disponibles. La Biblioteca reúne búsqueda con Ctrl+F, importación, contadores, seis categorías, controles de orden y reproducción, tabla con miniaturas y ficha lateral. El pie de reproducción es común a las tres vistas. En ventanas estrechas se prioriza la tabla y, con poca altura, las categorías pasan a un selector.
 
 - `src/MusicLayer.Presentation.Wpf/Views/LibraryView.xaml` y su code-behind contienen la composición, el foco y la carga de carátulas visibles. `Resources/LibraryTheme.xaml` reúne los estilos de la vista.
-- `ViewModels/LibraryBrowser.cs` filtra y ordena. `ViewModels/MainViewModel.cs` enlaza cada resultado con su índice original de cola. La pista activa permanece en el panel mientras se explora otra fila. Favoritas y Recientes duran la sesión.
+- `ViewModels/LibraryBrowser.cs` filtra y ordena. `ViewModels/MainViewModel.cs` enlaza cada resultado con su índice original de cola. La pista activa permanece en el panel mientras se explora otra fila. SQLite guarda Favoritas y Recientes dura la sesión.
 - `Views/MainWindow.xaml` contiene navegación y transporte. `Resources/Art/LibraryArtwork.png` aporta la carátula de respaldo y `LibraryAmbient.png` el fondo. Las etiquetas de TagLib aportan artista, álbum, género, duración y datos de audio cuando existen.
 - Para comprobar regresiones: reproducir una pista, buscar otra, seleccionar la fila filtrada, abrir Letras y regresar. Comprobar canción activa, selección, posición y volumen. Probar también carpeta vacía y archivo sin portada.
 
@@ -49,7 +49,9 @@ Compilación estándar en Windows con cero advertencias y errores. Pasaron 121 p
 
 ## Reproducción activa · favorita y más opciones (tarea 4.5)
 
-El corazón junto al control de reproducción marca o quita de Favoritas la pista que muestra la carátula. Usa las mismas favoritas de sesión que Biblioteca. El botón de tres puntos está visible y deshabilitado, con la indicación «Más opciones próximamente».
+Reproducción activa también muestra la forma de onda del audio debajo de la carátula cuando hay espacio. El tramo escuchado y el cursor reflejan la posición de reproducción. Se verificó con WAV y con el FLAC de «Spiral», incluyendo pausa, salto y cambio de pista. Capturas en `obj/WaveformFeedbackCheck/final/`.
+
+El corazón junto al control de reproducción marca o quita de Favoritas la pista que muestra la carátula. Comparte las favoritas con Biblioteca y guarda cada cambio en SQLite. El botón de tres puntos está visible y deshabilitado, con la indicación «Más opciones próximamente».
 
 Compilación limpia y 121 pruebas superadas. La comprobación WPF verificó que el corazón actúa sobre la pista activa aunque haya otra fila seleccionada, que se actualiza desde Biblioteca y al cambiar de pista, y que el botón provisional permanece deshabilitado. Capturas en `obj/NowPlayingActionsCheck/run1/`.
 
@@ -71,16 +73,21 @@ Biblioteca muestra una tarjeta para importar cuando está vacía. Los avisos dis
 
 Compilación limpia y 124 pruebas superadas. La comprobación WPF usó una carpeta temporal, un WAV dañado y un .lrc añadido durante la reproducción. Verificó los estados, la recuperación del WAV y de la letra, y la visibilidad de los controles de reproducción en los tres tamaños de referencia. Capturas en `obj/StatusRecoveryCheck/final/`.
 
-## Siguiente aleatoria · implementada (tarea 6.5)
+## Modo aleatorio · implementado (tarea 6.5)
 
-El botón de flechas cruzadas del reproductor elige y reproduce otra pista de la cola con cada pulsación. Está disponible desde la última pista si hay otra para elegir. En caso de fallo, «Reintentar» conserva la elección. La solución compiló sin advertencias ni errores y pasaron 126 pruebas. La comprobación WPF verificó el cambio entre dos WAV desde ambos extremos de la cola y la visibilidad del botón en los tres tamaños de referencia.
+Las flechas cruzadas activan o desactivan el modo aleatorio durante la sesión. Con el modo activo, «Siguiente» y el avance automático eligen otra pista de la cola actual, incluida una playlist. Con el modo desactivado, avanzan en el orden de la cola. En caso de fallo, «Reintentar» conserva la elección.
 
-## Próximos PR, en orden
+## Playlists · implementadas (tarea 7)
 
-| Tarea | Referencia local | Entrega y criterio de aceptación |
-| --- | --- | --- |
-| 7 · Playlists | `PlayList.png` | Acordar primero creación, edición y persistencia. Después construir cuadrícula, tarjetas, estado vacío y detalle. Aceptar al crear una lista, volver a abrirla y reproducir su contenido con el orden acordado. Incorporar el destino al menú. |
-| 8 · Configuración | `Configuracion.png` | Construir la pantalla por grupos de preferencias. Carpeta y volumen ya se guardan en SQLite. Verificar ambos tras reiniciar. Acordar las opciones de tema, letras y continuidad de sesión antes de presentarlas como configurables. |
+La barra lateral y el menú expandido abren la cuadrícula de playlists. Desde el detalle se puede renombrar una lista, añadir o quitar canciones y reordenarlas. SQLite guarda los nombres y el orden junto a las preferencias. Al reproducir una playlist, la cola usa las pistas disponibles en ese orden. Las canciones fuera de la biblioteca actual siguen en el detalle para cuando vuelvan a estar disponibles.
+
+La solución compiló sin advertencias ni errores y pasaron 128 pruebas. La comprobación WPF creó y editó una lista, verificó la cola y la reproducción, cerró el modelo y reabrió la playlist desde SQLite. Se revisaron el estado vacío, la cuadrícula y el detalle en los tres tamaños de referencia. Capturas en `obj/PlaylistsCheck/final/`.
+
+## Configuración · implementada (tarea 8)
+
+La barra lateral y el menú abren Configuración. La pantalla sigue la referencia local `Guide/Configuracion.png`. Permite cambiar la carpeta, ajustar el volumen del reproductor, activar el avance automático y elegir el seguimiento y la atenuación de versos. SQLite conserva los cambios. «Recordar dónde me quedé» viene desactivado. Al habilitarlo, cerrar y volver a abrir Tonic recupera la pista en la biblioteca y el botón Reproducir retoma su posición. Oscuro es el tema activo. Claro y Según el sistema muestran el diálogo «en futuras versiones».
+
+La solución compiló sin advertencias ni errores y pasaron 132 pruebas. La comprobación WPF verificó navegación, volumen compartido, letras, ambos diálogos y recuperación de ajustes, carpeta, volumen y posición con una biblioteca temporal tras reabrir la ventana. Se revisaron capturas de 1586 × 992, 1120 × 720 y 660 × 460 en `obj/SettingsCheck/final/`.
 
 ## Evidencia de Biblioteca
 
@@ -90,4 +97,4 @@ Build en Windows con .NET 10, cero advertencias y cero errores. Pasaron 121 prue
 
 - Compilar con `dotnet build MusicLayer.sln` y ejecutar `dotnet test MusicLayer.sln` en Windows con .NET 10. Abrir con `dotnet run --project src/MusicLayer.Presentation.Wpf`.
 - Para cada PR, comparar capturas con su PNG en escritorio amplio, tamaño inicial (1120 × 720) y tamaño mínimo (660 × 460). Registrar los estados realmente probados y cualquier diferencia pendiente. Usar pistas de prueba o propias al publicar capturas.
-- Antes de cerrar el MVP 4 queda probar desde un clon limpio, validar salida de audio física y DPI alto, y preparar capturas finales para el README. La siguiente tarea visual es Playlists, con alcance por acordar.
+- Antes de cerrar el MVP 4 queda probar desde un clon limpio, validar salida de audio física y DPI alto, y preparar capturas finales para el README.
