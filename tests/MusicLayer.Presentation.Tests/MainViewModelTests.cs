@@ -13,6 +13,35 @@ namespace MusicLayer.Presentation.Tests;
 public sealed class MainViewModelTests
 {
     [Fact]
+    public async Task FilteredLibraryPlaysTheOriginalQueueEntryAndKeepsSessionViewsConsistent()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var first = new Song("first.flac", new("Zeta", "Norte", "Uno"));
+            var second = new Song(path, new("Alba", "Sur", "Dos") { Genre = "Jazz" });
+            await using var vm = CreateViewModel(new FakePlayer(), new FakeScanner(first, second));
+            await vm.LoadFolderAsync("música");
+            vm.Library.Section = "Géneros";
+            vm.Library.Group = Assert.Single(vm.Library.Groups);
+            vm.Library.SearchText = "SUR";
+            var row = Assert.Single(vm.Library.Rows);
+            vm.SelectedLibraryRow = row;
+            await vm.PlaySelectedAsync();
+            Assert.Same(second, vm.CurrentSong);
+            Assert.Equal(1, vm.CurrentSongIndex);
+            vm.Library.SearchText = "";
+            row.IsFavorite = true;
+            vm.Library.Section = "Favoritas";
+            Assert.Same(row, Assert.Single(vm.Library.Rows));
+            row.IsFavorite = false;
+            Assert.Empty(vm.Library.Rows);
+            vm.Library.Section = "Recientes";
+            Assert.Same(row, Assert.Single(vm.Library.Rows));
+        }
+        finally { File.Delete(path); }
+    }
+    [Fact]
     public async Task StartupRestoresTheLibraryAndAppliesMuteBeforeTheFirstPlay()
     {
         var path = Path.GetTempFileName();
@@ -551,6 +580,229 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task FavoriteWritesKeepToggleOrderAndRestoreOutsideTheCurrentFolder()
+    {
+        var first = new Song(Path.GetFullPath("favorita.flac"));
+        var second = new Song(Path.GetFullPath("otra.flac"));
+        var prefs = new FakePreferences();
+        var firstWrite = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        prefs.BeforeSavingFavorite = isFavorite => isFavorite ? firstWrite.Task : Task.CompletedTask;
+        var scanner = new FakeScanner { Scan = folder => Task.FromResult<IReadOnlyList<Song>>(folder == "primera" ? [first] : [second]) };
+
+        var initial = CreateViewModel(new FakePlayer(), scanner, preferences: prefs);
+        await initial.LoadFolderAsync("primera");
+        initial.SelectedIndex = 0;
+        Assert.Same(initial.SongRows[0], initial.CoverRow);
+        initial.CoverRow!.IsFavorite = true;
+        initial.CoverRow.IsFavorite = false;
+        initial.CoverRow.IsFavorite = true;
+        await initial.LoadFolderAsync("segunda");
+        var closing = initial.DisposeAsync().AsTask();
+        Assert.False(closing.IsCompleted);
+        firstWrite.SetResult();
+        await closing;
+        Assert.Equal(new[] { true, false, true }, prefs.FavoriteWrites);
+
+        await using var reopened = CreateViewModel(new FakePlayer(), scanner, preferences: prefs);
+        await reopened.InitializeAsync();
+        Assert.False(Assert.Single(reopened.SongRows).IsFavorite);
+        await reopened.LoadFolderAsync("primera");
+        reopened.Library.Section = "Favoritas";
+        var restored = Assert.Single(reopened.Library.Rows);
+        Assert.Same(first, restored.Song);
+        restored.IsFavorite = false;
+        Assert.Empty(reopened.Library.Rows);
+        Assert.Empty(prefs.Favorites);
+    }
+
+    [Fact]
+    public async Task PlaylistOrderControlsTheQueueWithoutReplacingLibraryRows()
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var songs = paths.Select(path => new Song(path)).ToArray();
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(songs));
+            await vm.LoadFolderAsync(".");
+            var library = vm.SongRows;
+            await vm.PlayPlaylistAsync([library[2], library[0]], 0);
+            Assert.Same(songs[2], vm.CurrentSong);
+            Assert.Equal(2, vm.CurrentSongIndex);
+            Assert.Equal(0, vm.CurrentQueueIndex);
+            Assert.Same(library, vm.SongRows);
+
+            player.Complete(filePath: paths[2]);
+            Assert.Same(songs[0], vm.CurrentSong);
+            Assert.Equal(1, vm.CurrentQueueIndex);
+            Assert.False(vm.CanNext);
+
+            vm.IsShuffleEnabled = true;
+            Assert.True(vm.CanNext);
+            player.Complete(filePath: paths[0]);
+            Assert.Same(songs[2], vm.CurrentSong);
+            Assert.Same(library, vm.SongRows);
+
+            vm.IsShuffleEnabled = false;
+            await vm.PlayNextAsync();
+            Assert.Same(songs[0], vm.CurrentSong);
+            Assert.False(vm.CanNext);
+
+            vm.SelectedIndex = 1;
+            await vm.PlaySelectedAsync();
+            Assert.Same(songs[1], vm.CurrentSong);
+            Assert.Same(library, vm.QueueRows);
+            Assert.True(vm.CanNext);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task RandomNextSkipsCurrentTrackAndRetriesTheSameChoiceOnFailure()
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var songs = paths.Select(path => new Song(path)).ToArray();
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(songs));
+            await vm.LoadFolderAsync(".");
+            vm.SelectedIndex = 2;
+            await vm.PlaySelectedAsync();
+            Assert.False(vm.CanNext);
+            var playCount = player.PlayCount;
+            vm.IsShuffleEnabled = true;
+            Assert.True(vm.CanNext);
+            Assert.Equal(playCount, player.PlayCount);
+
+            string? failed = null;
+            player.OnPlay = path =>
+            {
+                failed = path;
+                throw new IOException("Audio output failed.");
+            };
+            await vm.PlayNextAsync();
+            Assert.Contains(failed, paths[..2]);
+            Assert.True(vm.CanRetryPlayback);
+
+            player.OnPlay = null;
+            await vm.RetryPlaybackAsync();
+            Assert.Equal(failed, vm.CurrentSong?.FilePath);
+            var previous = vm.CurrentSong;
+            await vm.PlayNextAsync();
+            Assert.NotSame(previous, vm.CurrentSong);
+            Assert.True(vm.IsPlaying);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task NaturalCompletionPlaysNextAndStopsAtEndOfQueue()
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var songs = paths.Select(path => new Song(path)).ToArray();
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(songs));
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+
+            player.Complete(filePath: paths[0]);
+            Assert.Same(songs[1], vm.CurrentSong);
+            Assert.Equal(1, vm.SelectedIndex);
+            Assert.True(vm.IsPlaying);
+
+            player.Complete(filePath: paths[1]);
+            Assert.Null(vm.CurrentSong);
+            Assert.Equal("Reproducción finalizada.", vm.Status);
+            Assert.Equal(2, player.PlayCount);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CompletionDuringTrackStartRespectsWhichTrackEnded(bool incomingTrackEnded)
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var songs = paths.Select(path => new Song(path)).ToArray();
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(songs));
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            player.OnPlay = path =>
+            {
+                if (path == paths[1])
+                    player.Complete(filePath: incomingTrackEnded ? paths[1] : paths[0]);
+            };
+
+            await vm.PlayNextAsync();
+            Assert.Same(songs[incomingTrackEnded ? 2 : 1], vm.CurrentSong);
+            Assert.True(vm.IsPlaying);
+            Assert.Equal(incomingTrackEnded ? 3 : 2, player.PlayCount);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task TurningOffAutoAdvanceLeavesManualNextAvailable()
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var player = new FakePlayer();
+            await using var vm = CreateOnImmediateContext(player, new FakeScanner(paths.Select(p => new Song(p)).ToArray()));
+            await vm.LoadFolderAsync(".");
+            vm.AutoAdvance = false;
+            await vm.PlayNextAsync();
+            player.Complete(filePath: paths[0]);
+            Assert.Null(vm.CurrentSong);
+            Assert.Equal(1, player.PlayCount);
+            await vm.PlayNextAsync();
+            Assert.Equal(paths[1], vm.CurrentSong?.FilePath);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ReopeningSelectsBookmarkedTrackAndSeeksOnlyWhenThatTrackPlays(bool playBookmark)
+    {
+        var paths = new[] { Path.GetTempFileName(), Path.GetTempFileName() };
+        try
+        {
+            var clock = new PlaybackProgress(TimeSpan.FromSeconds(37), TimeSpan.FromMinutes(3));
+            var prefs = new FakePreferences();
+            var scanner = new FakeScanner(paths.Select(p => new Song(p)).ToArray());
+            await using (var first = CreateViewModel(new FakePlayer { Progress = clock }, scanner, preferences: prefs))
+            {
+                await first.LoadFolderAsync(".");
+                first.RememberPosition = true;
+                first.FollowLyrics = false;
+                first.SelectedIndex = 1;
+                await first.PlaySelectedAsync();
+            }
+            var player = new FakePlayer { Progress = clock with { Elapsed = TimeSpan.Zero } };
+            await using var reopened = CreateViewModel(player, scanner, preferences: prefs);
+            await reopened.InitializeAsync();
+            Assert.False(reopened.IsPlaying);
+            Assert.True(reopened.RememberPosition);
+            Assert.False(reopened.FollowLyrics);
+            Assert.Equal(1, reopened.SelectedIndex);
+            if (!playBookmark) reopened.SelectedIndex = 0;
+            await reopened.TogglePlaybackAsync();
+            if (playBookmark) Assert.Equal(clock.Elapsed, Assert.Single(player.SeekRequests));
+            else Assert.Empty(player.SeekRequests);
+        }
+        finally { foreach (var path in paths) File.Delete(path); }
+    }
+
+    [Fact]
     public async Task CompletionUpdatesViewModelAndDisposalUnsubscribes()
     {
         var player = new FakePlayer();
@@ -631,6 +883,43 @@ public sealed class MainViewModelTests
     }
 
     [Fact]
+    public async Task SeekingMovesTheLyricEmphasisAndClearsItDuringAnInstrumentalGap()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var tags = new TrackMetadata("Título", "Artista", null);
+            var player = new FakePlayer { Progress = new(TimeSpan.Zero, TimeSpan.FromMinutes(1)) };
+            var lyrics = new FakeLyrics();
+            await using var vm = CreateViewModel(player, new FakeScanner(new Song(path, tags)), lyrics: lyrics);
+            vm.Lyrics.IsOpen = true;
+            await vm.LoadFolderAsync(".");
+            await vm.PlayNextAsync();
+            var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.Status == "Letra sincronizada");
+            Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found, new(1, null, null, null,
+                null, false, null, "[00:02]Inicio\n[00:08]Dos\n[00:15]Tres\n[00:23]Cuatro\n[00:30]\n[00:45]Final")));
+            await loaded;
+            var rows = vm.Lyrics.Rows;
+            Assert.All(rows, row => Assert.Equal(LyricEmphasis.Distant, row.Emphasis));
+
+            await vm.Lyrics.SeekToLineAsync(rows[2]);
+            Assert.Equal(LyricEmphasis.Active, rows[2].Emphasis);
+            Assert.Equal(LyricEmphasis.Nearby, rows[1].Emphasis);
+            Assert.Equal(LyricEmphasis.Nearby, rows[3].Emphasis);
+
+            await vm.Lyrics.SeekToLineAsync(rows[0]);
+            Assert.Equal(LyricEmphasis.Active, rows[0].Emphasis);
+            Assert.Equal(LyricEmphasis.Nearby, rows[1].Emphasis);
+            Assert.All(rows.Skip(2), row => Assert.Equal(LyricEmphasis.Distant, row.Emphasis));
+
+            await vm.SeekAsync(0.5);
+            Assert.Equal(-1, vm.Lyrics.ActiveLineIndex);
+            Assert.All(rows, row => Assert.Equal(LyricEmphasis.Distant, row.Emphasis));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public async Task LyricsFollowThePlayingTrackAndClockOnlyWhileOpen()
     {
         var path = Path.GetTempFileName();
@@ -700,19 +989,31 @@ public sealed class MainViewModelTests
             if (pause) await vm.PauseAsync();
             var loaded = WaitForLyrics(vm.Lyrics, () => vm.Lyrics.ActiveLineIndex == 0);
             Assert.Single(lyrics.Requests).Reply.SetResult(new(LyricsLookupStatus.Found,
-                new(1, null, null, null, null, false, null, "[00:00]Inicio\n[00:30]Mitad")));
+                new(1, null, null, null, null, false, null, "[00:00]Inicio con luz\n[00:30]Mitad de noche")));
             await loaded;
             var rows = vm.Lyrics.Rows;
             Assert.True(vm.CanSeek);
+            Assert.Equal("Inicio".Length, rows[0].LitTextLength);
+
+            await vm.SeekAsync(0.25);
+            Assert.True(rows[0].IsActive);
+            Assert.Equal("Inicio con".Length, rows[0].LitTextLength);
 
             await vm.SeekAsync(0.5);
             Assert.Equal("00:30", vm.ElapsedTimeText);
             Assert.True(rows[1].IsActive);
+            Assert.Equal(0, rows[0].LitTextLength);
+            Assert.Equal("Mitad".Length, rows[1].LitTextLength);
+            await vm.SeekAsync(0.9);
+            Assert.Equal(rows[1].Text.Length, rows[1].LitTextLength);
             await vm.SeekAsync(-1);
             Assert.Equal("00:00", vm.ElapsedTimeText);
             Assert.True(rows[0].IsActive);
+            Assert.Equal("Inicio".Length, rows[0].LitTextLength);
+            Assert.Equal(0, rows[1].LitTextLength);
             await vm.SeekAsync(double.NaN);
-            Assert.Equal(new[] { TimeSpan.FromSeconds(30), TimeSpan.Zero }, player.SeekRequests);
+            Assert.Equal(new[] { TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(54), TimeSpan.Zero },
+                player.SeekRequests);
             Assert.Equal(!pause, vm.IsPlaying);
             Assert.Equal(pause, vm.CanResume);
             Assert.Same(song, vm.CurrentSong);
@@ -906,6 +1207,21 @@ public sealed class MainViewModelTests
 
     private sealed class FakePreferences : IPlaybackPreferencesRepository
     {
+        public HashSet<string> Favorites { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<bool> FavoriteWrites { get; } = [];
+        public Func<bool, Task> BeforeSavingFavorite { get; set; } = _ => Task.CompletedTask;
+
+        public Task<IReadOnlyList<string>> ReadFavoritesAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<string>>(Favorites.ToArray());
+
+        public async Task SaveFavoriteAsync(string path, bool isFavorite, CancellationToken cancellationToken = default)
+        {
+            FavoriteWrites.Add(isFavorite);
+            await BeforeSavingFavorite(isFavorite);
+            if (isFavorite) Favorites.Add(path);
+            else Favorites.Remove(path);
+        }
+
         public PlaybackPreferences Saved { get; set; } = new(null, 100);
         public bool FailAccess { get; init; }
         public Func<int, Task> BeforeSavingVolume { get; init; } = _ => Task.CompletedTask;
@@ -915,6 +1231,18 @@ public sealed class MainViewModelTests
 
         public Task<PlaybackPreferences> ReadAsync(CancellationToken cancellationToken = default)
             => FailAccess ? Task.FromException<PlaybackPreferences>(new IOException()) : Task.FromResult(Saved);
+
+        public Task SaveOptionsAsync(PlayerOptions options, CancellationToken cancellationToken = default)
+        {
+            Saved = Saved with { Options = options, Bookmark = options.RememberPosition ? Saved.Bookmark : null };
+            return Task.CompletedTask;
+        }
+
+        public Task SaveBookmarkAsync(PlaybackBookmark? bookmark, CancellationToken cancellationToken = default)
+        {
+            Saved = Saved with { Bookmark = bookmark };
+            return Task.CompletedTask;
+        }
 
         public Task SaveFolderAsync(string folder, CancellationToken cancellationToken = default)
         {
@@ -956,14 +1284,17 @@ public sealed class MainViewModelTests
         public PlaybackProgress? Progress { get; set; }
         public List<TimeSpan> SeekRequests { get; } = [];
         public Func<CancellationToken, Task<PlaybackProgress?>>? ReadProgress { get; set; }
+        public Action<string>? OnPlay { get; set; }
         public event EventHandler<PlaybackEndedEventArgs>? PlaybackEnded;
         public Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
         {
             PlayCount++;
             VolumesAtStart.Add(VolumePercent);
+            OnPlay?.Invoke(filePath);
             return Task.CompletedTask;
         }
-        public void Complete(Exception? error = null) => PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
+        public void Complete(Exception? error = null, string? filePath = null)
+            => PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error, filePath));
         public Task<bool> PauseAsync(CancellationToken cancellationToken = default)
         {
             PauseCount++;

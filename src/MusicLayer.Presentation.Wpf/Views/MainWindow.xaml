@@ -6,254 +6,231 @@
         WindowStartupLocation="CenterScreen" UseLayoutRounding="True" FontFamily="Segoe UI" FontSize="14"
         Background="{DynamicResource CanvasBrush}" Foreground="{DynamicResource InkBrush}">
     <Window.Resources>
-        <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <ImageBrush x:Key="LibraryAmbient" ImageSource="../Resources/Art/LibraryAmbient.png" Stretch="Fill" />
+            <Thickness x:Key="RailLinkMargin">0,3</Thickness>
+            <Style x:Key="RailLink" TargetType="RadioButton" BasedOn="{StaticResource Nav}">
+                <Setter Property="Margin" Value="{DynamicResource RailLinkMargin}" />
+                <Setter Property="ContentTemplate">
+                    <Setter.Value><DataTemplate><StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="18" Width="23" Text="{Binding Tag, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                        <TextBlock Text="{Binding}" Margin="9,0,0,0" />
+                    </StackPanel></DataTemplate></Setter.Value>
+                </Setter>
+            </Style>
+            <Thickness x:Key="MenuRoutePadding">12,8</Thickness>
+            <Style x:Key="MenuRoute" TargetType="Button">
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Padding" Value="{DynamicResource MenuRoutePadding}" />
+                <Setter Property="Margin" Value="0,2" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Border x:Name="RouteFrame" CornerRadius="10" Padding="{TemplateBinding Padding}"
+                                        Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="›" FontSize="19" Margin="8,0,0,0"
+                                                   Foreground="{StaticResource SecondaryBrush}" />
+                                        <TextBlock DockPanel.Dock="Left" FontFamily="Segoe MDL2 Assets" FontSize="21"
+                                                   Width="30" Margin="0,0,9,0" Text="{TemplateBinding Tag}" />
+                                        <ContentPresenter VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+                                <Border x:Name="ActiveMark" HorizontalAlignment="Left" Width="3" CornerRadius="2"
+                                        Margin="3,8,0,8" Background="#48EDBD" Visibility="Collapsed" IsHitTestVisible="False" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="RouteFrame" Property="Background" Value="#163439" />
+                                </Trigger>
+                                <Trigger Property="Selector.IsSelected" Value="True">
+                                    <Setter TargetName="RouteFrame" Property="Background" Value="#123936" />
+                                    <Setter TargetName="RouteFrame" Property="BorderBrush" Value="#36736C" />
+                                    <Setter TargetName="ActiveMark" Property="Visibility" Value="Visible" />
+                                    <Setter Property="AutomationProperties.ItemStatus" Value="Sección actual" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="RouteFrame" Property="BorderBrush" Value="{StaticResource InkBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="RouteFrame" Property="Opacity" Value=".45" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="ShuffleTransport" TargetType="ToggleButton">
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Margin" Value="3,0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                <Setter Property="ToolTip" Value="Activar modo aleatorio" />
+                <Setter Property="AutomationProperties.Name" Value="Modo aleatorio" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Surface" Background="{StaticResource ControlBrush}" BorderBrush="Transparent"
+                                    BorderThickness="1" CornerRadius="9">
+                                <TextBlock Text="&#xE8B1;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{TemplateBinding Foreground}" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Surface" Property="Background" Value="{StaticResource HoverBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Surface" Property="Background" Value="#174740" />
+                                    <Setter TargetName="Surface" Property="BorderBrush" Value="#48EDBD" />
+                                    <Setter Property="Foreground" Value="#68F6CF" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource InkBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="ToolTip" Value="Desactivar modo aleatorio" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="PrimaryTransport" TargetType="Button" BasedOn="{StaticResource Transport}">
+                <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
+                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+                    <Border x:Name="Circle" Background="#48EDBD" CornerRadius="24" BorderThickness="1" BorderBrush="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Circle" Property="Background" Value="#92FFDB" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Circle" Property="Opacity" Value=".45" /></Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Circle" Property="BorderBrush" Value="White" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate></Setter.Value></Setter>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
     <Grid Background="{StaticResource CanvasBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="56" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <Border Background="{StaticResource RailBrush}" Padding="20,0" BorderThickness="0,0,0,1" BorderBrush="{StaticResource RaisedBrush}">
-            <StackPanel Orientation="Horizontal">
-                <Image x:Name="TonicLogo" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
-                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
-                           Margin="10,0" FontSize="21" FontWeight="SemiBold" />
-            </StackPanel>
-        </Border>
-
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <Border Background="{StaticResource PanelBrush}" Padding="10,22">
-                <StackPanel>
-                    <TextBlock Text="Biblioteca" Style="{StaticResource Caption}" Margin="12,0,0,10" />
-                    <RadioButton x:Name="Library" Content="Canciones" GroupName="Screen" Style="{StaticResource Nav}" IsChecked="True" />
-                    <RadioButton x:Name="NowPlaying" Content="Ahora suena" GroupName="Screen" Style="{StaticResource Nav}" Margin="0,3,0,0" />
-                    <RadioButton x:Name="LyricsTab" Content="Letras" GroupName="Screen" Style="{StaticResource Nav}" Margin="0,3,0,0"
-                                 IsChecked="{Binding Lyrics.IsOpen, Mode=TwoWay}" />
-                </StackPanel>
-            </Border>
-            <Grid Grid.Column="1" Margin="20,16,20,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <DockPanel Margin="0,0,0,14">
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Click="ChooseFolder" IsEnabled="{Binding IsReady}" AutomationProperties.Name="Importar carpeta"
-                            Background="{StaticResource RaisedBrush}" BorderBrush="{StaticResource LibraryBrush}">
+        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="178" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border x:Name="NavigationRail" Background="#0C171F" BorderBrush="#304047" BorderThickness="0,0,1,0" Padding="8,16" ClipToBounds="True">
+                <DockPanel LastChildFill="False">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="7,5,0,12">
+                        <Image x:Name="TonicLogo" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock x:Name="Brand" Text="Tonic" FontSize="22" Margin="9,0,0,0" FontWeight="Bold" />
+                    </StackPanel>
+                    <Button x:Name="NavigationMenuButton" DockPanel.Dock="Top" Click="OpenNavigationMenu" Margin="0,0,0,9"
+                            Padding="8,4" Background="{StaticResource RaisedBrush}" BorderBrush="#304950"
+                            ToolTip="Abrir menú de navegación" AutomationProperties.Name="Abrir menú de navegación">
                         <StackPanel Orientation="Horizontal">
-                            <Image Source="{StaticResource Add}" Width="16" Height="16" Margin="0,0,7,0" />
-                            <TextBlock Text="Importar carpeta" />
+                            <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" FontSize="16" />
+                            <TextBlock x:Name="MenuButtonLabel" Text="Menú" Margin="8,0,0,0" />
                         </StackPanel>
                     </Button>
-                    <Grid>
-                        <TextBlock FontSize="28" FontWeight="SemiBold">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                    <Setter Property="Text" Value="Tu biblioteca" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                        <Setter Property="Text" Value="Ahora suena" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <Border Background="{StaticResource RaisedBrush}" CornerRadius="13"
-                            Padding="12,8" Margin="0,0,12,0">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </Border.Style>
-                            <DockPanel>
-                                <Image DockPanel.Dock="Left" Width="48" Height="48" Margin="0,0,12,0"
-                                   Source="{Binding CoverImage, TargetNullValue={StaticResource Cover}}"
-                                   Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding CoverLabel}" Margin="12,0,0,0"
-                                       Style="{StaticResource Caption}" />
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
-                                           FontSize="18" FontWeight="SemiBold" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
-                                    <TextBlock Text="{Binding CoverDescription}" Style="{StaticResource Caption}"
-                                           ToolTip="{Binding CoverDescription}" />
-                                </StackPanel>
-                            </DockPanel>
-                        </Border>
-                    </Grid>
+                    <StackPanel DockPanel.Dock="Top">
+                        <RadioButton x:Name="Library" Content="Biblioteca" Tag="&#xE8F1;" ToolTip="Biblioteca" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="True" />
+                        <RadioButton x:Name="NowPlaying" Content="Reproducción" Tag="&#xE768;" ToolTip="Reproducción" GroupName="Screen" Style="{StaticResource RailLink}" />
+                        <RadioButton x:Name="LyricsTab" Content="Letras" Tag="&#xE8A4;" ToolTip="Letras" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="{Binding Lyrics.IsOpen, Mode=TwoWay}" />
+                        <RadioButton x:Name="PlaylistsTab" Content="Playlists" Tag="&#xE8D6;" ToolTip="Playlists" GroupName="Screen" Style="{StaticResource RailLink}" />
+                        <RadioButton x:Name="SettingsTab" Content="Configuración" Tag="&#xE713;" ToolTip="Configuración" GroupName="Screen" Style="{StaticResource RailLink}" />
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" x:Name="FolderInfo" Margin="10,5">
+                        <TextBlock Text="Carpeta de música" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding LibraryFolder, TargetNullValue=Sin carpeta}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LibraryFolder}" Margin="0,4,0,0" />
+                    </StackPanel>
                 </DockPanel>
-
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition>
-                            <ColumnDefinition.Style>
-                                <Style TargetType="ColumnDefinition">
-                                    <Setter Property="Width" Value="2*" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                        <Setter Property="Width" Value="1.1*" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </ColumnDefinition.Style>
-                        </ColumnDefinition>
-                        <ColumnDefinition Width="12" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Border Background="{StaticResource LibraryBrush}" CornerRadius="13" Padding="12">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                    <Setter Property="Grid.Column" Value="2" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger></Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <Grid>
-                            <Grid>
-                                <Grid.Style>
-                                    <Style TargetType="Grid">
-                                        <Style.Triggers><DataTrigger Binding="{Binding Songs.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger></Style.Triggers>
-                                    </Style>
-                                </Grid.Style>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <DockPanel Margin="3,0,3,10">
-                                    <Border DockPanel.Dock="Right" Background="{StaticResource RaisedBrush}" CornerRadius="8" Padding="8,2">
-                                        <TextBlock Text="{Binding Songs.Count}" AutomationProperties.Name="Número de canciones" />
-                                    </Border>
-                                    <TextBlock FontSize="17" FontWeight="SemiBold">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                                <Setter Property="Text" Value="Canciones" />
-                                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                                    <Setter Property="Text" Value="Cola de reproducción" />
-                                                </DataTrigger></Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </DockPanel>
-                                <ListBox x:Name="SongList" Grid.Row="1" Background="Transparent"
-                                         BorderThickness="0" Padding="0" Foreground="{StaticResource InkBrush}"
-                                         AutomationProperties.Name="Canciones en orden de reproducción" ItemsSource="{Binding SongRows}"
-                                         SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}" AlternationCount="2"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.VirtualizationMode="Recycling"
-                                         MouseDoubleClick="ActivateRow" PreviewKeyDown="ActivateRowFromKeyboard"
-                                         ItemContainerStyle="{StaticResource SongRow}">
-                                    <ListBox.Resources>
-                                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" />
-                                    </ListBox.Resources>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel ToolTip="{Binding Song.FilePath}">
-                                                <TextBlock Text="{Binding Song.DisplayName}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding Song.FolderName}" FontSize="12" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                                <Button Grid.Row="2" Content="Reproducir selección" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                        IsEnabled="{Binding CanPlaySelected}" Click="PlaySelected" />
-                            </Grid>
-                            <ScrollViewer VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="360"
-                                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                          VerticalContentAlignment="Center" Focusable="False">
-                                <ScrollViewer.Style>
-                                    <Style TargetType="ScrollViewer">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers><DataTrigger Binding="{Binding Songs.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger></Style.Triggers>
-                                    </Style>
-                                </ScrollViewer.Style>
-                                <Border CornerRadius="12" Background="{StaticResource RaisedBrush}" Padding="16">
-                                    <StackPanel>
-                                        <Border Width="32" Height="32" HorizontalAlignment="Left" CornerRadius="8"
-                                                Background="{StaticResource HoverBrush}" Margin="0,0,0,10">
-                                            <Image Width="18" Height="18" Source="{StaticResource Music}" />
-                                        </Border>
-                                        <TextBlock FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                                    <Setter Property="Text" Value="Tu biblioteca está vacía" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding HasImportedFolder}" Value="True">
-                                                            <Setter Property="Text" Value="Sin canciones compatibles" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Notice}" Value="Importing">
-                                                            <Setter Property="Text" Value="Importando carpeta…" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <TextBlock Text="Elige una carpeta con archivos MP3, WAV o FLAC."
-                                                   Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,10" />
-                                        <Button Content="Elegir carpeta" Click="ChooseFolder" IsEnabled="{Binding IsReady}" HorizontalAlignment="Left" />
-                                    </StackPanel>
-                                </Border>
-                            </ScrollViewer>
-                        </Grid>
-                    </Border>
-                    <views:LyricsView Grid.ColumnSpan="3" DataContext="{Binding Lyrics}">
-                        <views:LyricsView.Style>
-                            <Style TargetType="views:LyricsView">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger></Style.Triggers>
-                            </Style>
-                        </views:LyricsView.Style>
-                        <views:LyricsView.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></views:LyricsView.Resources>
-                    </views:LyricsView>
-                    <Border CornerRadius="13" Background="{StaticResource RaisedBrush}" Padding="16">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Grid.Column" Value="2" />
-                                <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
-                                    <Setter Property="Grid.Column" Value="0" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger></Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" /><RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="{Binding CoverLabel}" Style="{StaticResource Caption}" />
-                            <Image Grid.Row="1" Source="{Binding CoverImage, TargetNullValue={StaticResource Cover}}" Margin="0,16" Stretch="Uniform"
-                                   MaxHeight="320" MaxWidth="320" RenderOptions.BitmapScalingMode="HighQuality" />
-                            <TextBlock Grid.Row="2" FontSize="21" FontWeight="SemiBold"
-                                       Text="{Binding CoverSong.DisplayName, FallbackValue=Sin pista activa}"
-                                       ToolTip="{Binding CoverSong.FilePath}" />
-                            <TextBlock Grid.Row="3" Text="{Binding CoverDescription}" ToolTip="{Binding CoverDescription}"
-                                       Style="{StaticResource Caption}" />
-                        </Grid>
-                    </Border>
+            </Border>
+            <Grid x:Name="ScreenHost" Grid.Column="1">
+                <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid Background="{StaticResource LibraryAmbient}">
+                    <Grid.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></Grid.Resources>
+                    <Grid.Style><Style TargetType="Grid"><Style.Triggers>
+                        <DataTrigger Binding="{Binding IsChecked, ElementName=Library}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                    </Style.Triggers></Style></Grid.Style>
+                    <views:LibraryView x:Name="LibraryScreen" ImportRequested="ChooseFolder" />
                 </Grid>
-                <Border Grid.Row="2" Margin="0,6,0,0" CornerRadius="8">
+                <views:LyricsView DataContext="{Binding Lyrics}"
+                                  FollowLyrics="{Binding DataContext.FollowLyrics, RelativeSource={RelativeSource AncestorType=Window}}"
+                                  AmbientCover="{Binding DataContext.AmbientCoverImage, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <views:LyricsView.Style>
+                        <Style TargetType="views:LyricsView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger></Style.Triggers>
+                        </Style>
+                    </views:LyricsView.Style>
+                    <views:LyricsView.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></views:LyricsView.Resources>
+                </views:LyricsView>
+                <views:NowPlayingView x:Name="NowPlayingScreen" ImportRequested="ChooseFolder" LyricsRequested="ShowLyrics">
+                    <views:NowPlayingView.Style>
+                        <Style TargetType="views:NowPlayingView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=NowPlaying}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </views:NowPlayingView.Style>
+                </views:NowPlayingView>
+
+                <views:PlaylistsView x:Name="PlaylistsScreen" DataContext="{Binding Playlists}">
+                    <views:PlaylistsView.Style>
+                        <Style TargetType="views:PlaylistsView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=PlaylistsTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </views:PlaylistsView.Style>
+                </views:PlaylistsView>
+
+                <views:SettingsView x:Name="SettingsScreen" ImportRequested="ChooseFolder">
+                    <views:SettingsView.Style>
+                        <Style TargetType="views:SettingsView">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=SettingsTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </views:SettingsView.Style>
+                </views:SettingsView>
+
+                <Border x:Name="StatusBanner" Grid.Row="1" Margin="16,0,16,4" CornerRadius="8">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Setter Property="Padding" Value="3,2" />
                             <Style.Triggers>
+                                <DataTrigger Binding="{Binding Notice}" Value="Importing">
+                                    <Setter Property="Background" Value="#12323B" />
+                                    <Setter Property="Padding" Value="10,6" />
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding Notice}" Value="Imported">
-                                    <Setter Property="Background" Value="{StaticResource HoverBrush}" />
+                                    <Setter Property="Background" Value="#163832" />
                                     <Setter Property="Padding" Value="10,6" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
-                                    <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+                                    <Setter Property="Background" Value="#35252B" />
                                     <Setter Property="Padding" Value="10,6" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Notice}" Value="FolderError">
-                                    <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+                                    <Setter Property="Background" Value="#35252B" />
                                     <Setter Property="Padding" Value="10,6" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -261,22 +238,119 @@
                     </Border.Style>
                     <StackPanel>
                         <DockPanel>
-                            <Button DockPanel.Dock="Right" Content="Elegir otra canción" Click="ChooseAnotherSong"
-                                    IsEnabled="{Binding IsReady}" Margin="8,0,0,0">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers><DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                            <WrapPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                                <Button x:Name="RetryPlaybackButton" Content="Reintentar" Click="RetryPlayback" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
                                             <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger></Style.Triggers>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanRetryPlayback}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="AnotherSongButton" Content="Elegir otra canción" Click="ChooseAnotherSong"
+                                        IsEnabled="{Binding IsReady}" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Songs.Count}" Value="0">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="ImportRecoveryButton" Content="Elegir carpeta" Click="ChooseFolder"
+                                        IsEnabled="{Binding IsReady}" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="FolderError">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Button x:Name="ImportedLibraryButton" Content="Ver biblioteca" Click="ChooseAnotherSong"
+                                        IsEnabled="{Binding IsReady}" Margin="6,2,0,2">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StatusAction}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Imported">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </WrapPanel>
+                            <TextBlock DockPanel.Dock="Left" Margin="0,0,10,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource StatusGlyph}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Notice}" Value="Importing">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE895;" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Notice}" Value="Imported">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE73E;" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                                <Setter Property="Foreground" Value="#FFC0B6" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Notice}" Value="FolderError">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                                <Setter Property="Foreground" Value="#FFC0B6" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
                                     </Style>
-                                </Button.Style>
-                            </Button>
-                            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" ToolTip="{Binding StatusDetail}"
-                                   AutomationProperties.LiveSetting="Polite" />
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock FontWeight="SemiBold" TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Information">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Error">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Importing">
+                                                    <Setter Property="Text" Value="Importando música" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="Imported">
+                                                    <Setter Property="Text" Value="Importación completada" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="PlaybackError">
+                                                    <Setter Property="Text" Value="Error de reproducción" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Notice}" Value="FolderError">
+                                                    <Setter Property="Text" Value="No se pudo importar la carpeta" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" ToolTip="{Binding StatusDetail}"
+                                           AutomationProperties.LiveSetting="Polite" />
+                            </StackPanel>
                         </DockPanel>
                         <TextBlock Text="{Binding PreferencesWarning}" TextWrapping="Wrap"
                                AutomationProperties.LiveSetting="Polite">
@@ -294,9 +368,92 @@
                     </StackPanel>
                 </Border>
             </Grid>
+            <Grid x:Name="NavigationOverlay" Grid.ColumnSpan="2" Visibility="Collapsed">
+                <Border x:Name="NavigationBackdrop" Background="#A9040B11" MouseLeftButtonDown="DismissNavigationBackdrop" />
+                <Border x:Name="NavigationPanel" Width="382" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,12,10,12" Padding="14"
+                        BorderBrush="#345B62" BorderThickness="1" CornerRadius="16"
+                        KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"
+                        AutomationProperties.Name="Menú de navegación">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#112C35" Offset="0" />
+                            <GradientStop Color="#0C1B24" Offset=".36" />
+                            <GradientStop Color="#0D2930" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <DockPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="3,0,1,9">
+                            <Button x:Name="CloseNavigationButton" DockPanel.Dock="Right" Padding="7,3" Width="34"
+                                    Background="{StaticResource RaisedBrush}" BorderBrush="#34515A" Click="DismissNavigationMenu"
+                                    ToolTip="Cerrar menú (Escape)" AutomationProperties.Name="Cerrar menú">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                            </Button>
+                            <Image DockPanel.Dock="Left" Width="37" Height="37" Margin="0,0,11,0"
+                                   Source="{Binding Source, ElementName=TonicLogo}" RenderOptions.BitmapScalingMode="HighQuality" />
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Tonic" FontSize="22" FontWeight="Bold" />
+                                <TextBlock Text="Menú de navegación" Style="{StaticResource Caption}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                            <ScrollViewer.Resources>
+                                <Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" />
+                            </ScrollViewer.Resources>
+                            <StackPanel>
+                                <Button x:Name="MenuLibrary" Style="{StaticResource MenuRoute}" Tag="&#xE8F1;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=Library, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=Library}" Click="NavigateFromMenu" AutomationProperties.Name="Biblioteca">
+                                    <StackPanel>
+                                        <TextBlock Text="Biblioteca" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Canciones, artistas y álbumes" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuNowPlaying" Style="{StaticResource MenuRoute}" Tag="&#xE768;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=NowPlaying, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=NowPlaying}" Click="NavigateFromMenu" AutomationProperties.Name="Reproducción">
+                                    <StackPanel>
+                                        <TextBlock Text="Reproducción" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Pista actual y cola" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuLyrics" Style="{StaticResource MenuRoute}" Tag="&#xE8A4;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=LyricsTab, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=LyricsTab}" Click="NavigateFromMenu" AutomationProperties.Name="Letras">
+                                    <StackPanel>
+                                        <TextBlock Text="Letras" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Letra de la pista actual" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuPlaylists" Style="{StaticResource MenuRoute}" Tag="&#xE8D6;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=PlaylistsTab, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=PlaylistsTab}" Click="NavigateFromMenu" AutomationProperties.Name="Playlists">
+                                    <StackPanel>
+                                        <TextBlock Text="Playlists" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Listas de reproducción guardadas" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuSettings" Style="{StaticResource MenuRoute}" Tag="&#xE713;"
+                                        Selector.IsSelected="{Binding IsChecked, ElementName=SettingsTab, Mode=OneWay}"
+                                        CommandParameter="{Binding ElementName=SettingsTab}" Click="NavigateFromMenu" AutomationProperties.Name="Configuración">
+                                    <StackPanel>
+                                        <TextBlock Text="Configuración" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Biblioteca, reproducción y letras" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="MenuImport" Style="{StaticResource MenuRoute}" Tag="&#xE8B7;"
+                                        Click="ImportFromMenu" IsEnabled="{Binding IsReady}" AutomationProperties.Name="Importar música">
+                                    <StackPanel>
+                                        <TextBlock Text="Importar música" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock Text="Añade una carpeta con MP3, WAV o FLAC" Style="{StaticResource Caption}" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
         </Grid>
-
-        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" Padding="16,11"
+        <Border Grid.Row="1" Background="#0B1820" Padding="16,11"
                 BorderThickness="0,1,0,0" BorderBrush="{StaticResource LibraryBrush}">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -315,7 +472,7 @@
                     </Image>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding CurrentSong.DisplayName, FallbackValue=Sin pista activa}" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding PlaybackLabel}" Style="{StaticResource Caption}" />
+                        <TextBlock Text="{Binding CurrentSong.Metadata.Artist, FallbackValue='', TargetNullValue=''}" Style="{StaticResource Caption}" />
                     </StackPanel>
                 </DockPanel>
                 <StackPanel Grid.Column="1">
@@ -323,28 +480,30 @@
                         <Button Style="{StaticResource Transport}" Click="PlayPrevious" ToolTip="Anterior" IsEnabled="{Binding CanPrevious}">
                             <Image Source="{StaticResource Back}" Width="18" />
                         </Button>
-                        <Button Style="{StaticResource Transport}" Click="TogglePlayback" ToolTip="{Binding TransportLabel}"
-                                IsEnabled="{Binding CanTogglePlayback}" Width="44" Background="{StaticResource HoverBrush}"
+                        <Button Style="{StaticResource PrimaryTransport}" Click="TogglePlayback" ToolTip="{Binding TransportLabel}"
+                                IsEnabled="{Binding CanTogglePlayback}"
                                 BorderBrush="{StaticResource AccentBrush}">
                             <Grid>
-                                <Path Data="M 1,0 L 15,8 L 1,16 Z" Fill="{StaticResource InkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Path Data="M 1,0 L 15,8 L 1,16 Z" Fill="#092A26" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Path.Style><Style TargetType="Path"><Style.Triggers>
                                         <DataTrigger Binding="{Binding IsPlaying}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                                     </Style.Triggers></Style></Path.Style>
                                 </Path>
-                                <Image Source="{StaticResource Pause}" Width="18">
-                                    <Image.Style><Style TargetType="Image">
+                                <Path Data="M 0,0 h5 v16 h-5 Z M 9,0 h5 v16 h-5 Z" Fill="#092A26">
+                                    <Path.Style><Style TargetType="Path">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers><DataTrigger Binding="{Binding IsPlaying}" Value="True">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger></Style.Triggers>
-                                    </Style></Image.Style>
-                                </Image>
+                                    </Style></Path.Style>
+                                </Path>
                             </Grid>
                         </Button>
                         <Button Style="{StaticResource Transport}" Click="PlayNext" ToolTip="Siguiente" IsEnabled="{Binding CanNext}">
                             <Image Source="{StaticResource Next}" Width="18" />
                         </Button>
+                        <ToggleButton x:Name="ShuffleButton" Style="{StaticResource ShuffleTransport}"
+                                      IsChecked="{Binding IsShuffleEnabled, Mode=TwoWay}" />
                         <Button Style="{StaticResource Transport}" Click="Stop" ToolTip="Detener" IsEnabled="{Binding CanStop}">
                             <Border Width="12" Height="12" Background="{StaticResource InkBrush}" CornerRadius="2" />
                         </Button>

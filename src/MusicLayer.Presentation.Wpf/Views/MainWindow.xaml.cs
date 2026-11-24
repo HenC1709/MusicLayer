@@ -32,6 +32,19 @@ public partial class MainWindow : Window
         viewModel.PropertyChanged += OnViewModelChanged;
         DataContext = viewModel;
         Loaded += RestorePreferences;
+        SizeChanged += (_, _) =>
+        {
+            bool compact = ActualWidth < 850;
+            RailColumn.Width = new GridLength(compact ? 62 : Math.Min(236, ActualWidth * .15));
+            Brand.Visibility = FolderInfo.Visibility = MenuButtonLabel.Visibility =
+                compact ? Visibility.Collapsed : Visibility.Visible;
+            bool shortWindow = ActualHeight < 530;
+            Resources["RailLinkMargin"] = new Thickness(0, shortWindow ? 0 : 3, 0, shortWindow ? 0 : 3);
+            NavigationPanel.Margin = new Thickness(10, shortWindow ? 10 : 54, 10, 10);
+            var routePadding = shortWindow ? 2 : 8;
+            Resources["MenuRoutePadding"] = new Thickness(12, routePadding, 12, routePadding);
+        };
+        PreviewKeyDown += HandleNavigationKeys;
         SyncSeekSlider();
         progressTimer.Tick += RefreshPlaybackProgress;
         progressTimer.Start();
@@ -49,19 +62,75 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true) await viewModel.LoadFolderAsync(dialog.FolderName);
     }
 
-    private async void PlaySelected(object sender, RoutedEventArgs e)
-        => await viewModel.PlaySelectedAsync();
+    private void HandleNavigationKeys(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && NavigationOverlay.IsVisible)
+        {
+            CloseNavigationMenu();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            CloseNavigationMenu(restoreFocus: false);
+            Library.IsChecked = true;
+            LibraryScreen.FocusSearch();
+            e.Handled = true;
+        }
+    }
+
+    private void OpenNavigationMenu(object sender, RoutedEventArgs e)
+    {
+        NavigationOverlay.Visibility = Visibility.Visible;
+        SetScreenTabNavigation(KeyboardNavigationMode.None);
+        NavigationOverlay.UpdateLayout();
+        var active = SettingsTab.IsChecked == true ? MenuSettings
+            : PlaylistsTab.IsChecked == true ? MenuPlaylists
+            : LyricsTab.IsChecked == true ? MenuLyrics
+            : NowPlaying.IsChecked == true ? MenuNowPlaying
+            : MenuLibrary;
+        active.Focus();
+    }
+
+    private void CloseNavigationMenu(bool restoreFocus = true)
+    {
+        if (NavigationOverlay.Visibility != Visibility.Visible) return;
+        NavigationOverlay.Visibility = Visibility.Collapsed;
+        SetScreenTabNavigation(KeyboardNavigationMode.Continue);
+        if (restoreFocus) NavigationMenuButton.Focus();
+    }
+
+    private void SetScreenTabNavigation(KeyboardNavigationMode mode)
+    {
+        KeyboardNavigation.SetTabNavigation(NavigationRail, mode);
+        KeyboardNavigation.SetTabNavigation(ScreenHost, mode);
+    }
+
+    private void DismissNavigationMenu(object sender, RoutedEventArgs e) => CloseNavigationMenu();
+    private void DismissNavigationBackdrop(object sender, MouseButtonEventArgs e) => CloseNavigationMenu();
+
+    private void NavigateFromMenu(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { CommandParameter: RadioButton destination }) return;
+        destination.SetCurrentValue(ToggleButton.IsCheckedProperty, true);
+        CloseNavigationMenu();
+    }
+
+    private void ImportFromMenu(object sender, RoutedEventArgs e)
+    {
+        CloseNavigationMenu();
+        ChooseFolder(sender, e);
+    }
+
+    private void ShowLyrics(object sender, RoutedEventArgs e) => LyricsTab.IsChecked = true;
 
     private void ChooseAnotherSong(object sender, RoutedEventArgs e)
     {
         Library.IsChecked = true;
-        SongList.Focus();
-        var index = Math.Max(0, SongList.SelectedIndex);
-        if (index >= SongList.Items.Count) return;
-        SongList.ScrollIntoView(SongList.Items[index]);
-        SongList.UpdateLayout();
-        (SongList.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem)?.Focus();
+        LibraryScreen.FocusSongList();
     }
+
+    private async void RetryPlayback(object sender, RoutedEventArgs e)
+        => await viewModel.RetryPlaybackAsync();
 
     private async void PlayPrevious(object sender, RoutedEventArgs e)
         => await viewModel.PlayPreviousAsync();
@@ -71,20 +140,6 @@ public partial class MainWindow : Window
 
     private async void TogglePlayback(object sender, RoutedEventArgs e)
         => await viewModel.TogglePlaybackAsync();
-
-    private async void ActivateRow(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton == MouseButton.Left && e.OriginalSource is DependencyObject source &&
-            ItemsControl.ContainerFromElement(SongList, source) is ListBoxItem)
-            await viewModel.PlaySelectedAsync();
-    }
-
-    private async void ActivateRowFromKeyboard(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || !viewModel.CanPlaySelected) return;
-        e.Handled = true;
-        await viewModel.PlaySelectedAsync();
-    }
 
     private async void Stop(object sender, RoutedEventArgs e)
         => await viewModel.StopAsync();

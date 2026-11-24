@@ -16,7 +16,8 @@ public interface IAudioPlayer : IAsyncDisposable
 
 public readonly record struct PlaybackProgress(TimeSpan Elapsed, TimeSpan Duration);
 
-public sealed class PlaybackEndedEventArgs(Exception? error) : EventArgs
+public sealed class PlaybackEndedEventArgs(Exception? error, string? filePath = null) : EventArgs
 {
     public Exception? Error { get; } = error;
+    public string? FilePath { get; } = filePath;
 }

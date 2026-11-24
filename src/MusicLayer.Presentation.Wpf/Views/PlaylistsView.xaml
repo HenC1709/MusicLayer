@@ -1,0 +1,273 @@
+<UserControl x:Class="MusicLayer.Presentation.Wpf.Views.PlaylistsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Resources/PlayerTheme.xaml" />
+                <ResourceDictionary Source="../Resources/LibraryTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" />
+            <Style x:Key="PlaylistAction" TargetType="Button" BasedOn="{StaticResource LibraryButton}">
+                <Setter Property="Margin" Value="0,0,6,4" />
+            </Style>
+            <Style x:Key="CreatePlaylistAction" TargetType="Button" BasedOn="{StaticResource LibraryButton}">
+                <Setter Property="Background" Value="#10604F" />
+                <Setter Property="BorderBrush" Value="{StaticResource Mint}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="HorizontalAlignment" Value="Left" />
+                <Setter Property="IsEnabled" Value="{Binding CanEdit}" />
+                <Setter Property="Content" Value="+ Crear playlist" />
+            </Style>
+            <Style x:Key="PlaylistTrackPicker" TargetType="ComboBox">
+                <Setter Property="Foreground" Value="#F4F9F8" />
+                <Setter Property="Background" Value="#102833" />
+                <Setter Property="BorderBrush" Value="#43646E" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBox">
+                            <Grid>
+                                <ToggleButton Focusable="False" ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="PickerSurface" Background="#102833" BorderBrush="#43646E"
+                                                    BorderThickness="1" CornerRadius="8" Padding="0,0,10,0">
+                                                <TextBlock Text="⌄" Foreground="#B0C6CF" FontWeight="Bold" HorizontalAlignment="Right" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="PickerSurface" Property="Background" Value="#1A494C" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                                <ContentPresenter Margin="10,0,24,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" />
+                                <TextBlock x:Name="PickerPrompt" Text="Selecciona una canción" Foreground="{StaticResource Muted}"
+                                           VerticalAlignment="Center" Margin="10,0,24,0" Visibility="Collapsed" IsHitTestVisible="False" />
+                                <Border x:Name="PickerFocus" CornerRadius="8" BorderBrush="White" BorderThickness="1"
+                                        Visibility="Collapsed" IsHitTestVisible="False" />
+                                <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
+                                       IsOpen="{TemplateBinding IsDropDownOpen}" Focusable="False">
+                                    <Border Background="#102833" BorderBrush="#43646E" BorderThickness="1"
+                                            MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                        <ScrollViewer><ItemsPresenter /></ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="SelectedIndex" Value="-1">
+                                    <Setter TargetName="PickerPrompt" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                    <Setter TargetName="PickerFocus" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid Background="{DynamicResource LibraryAmbient}">
+        <Border Background="#48041117" IsHitTestVisible="False" />
+        <DockPanel Margin="16,12,16,8">
+            <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" Foreground="#FFC4BC" TextWrapping="Wrap"
+                       AutomationProperties.LiveSetting="Polite">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Error}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <Grid>
+                <DockPanel>
+                    <DockPanel.Style>
+                        <Style TargetType="DockPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Selected}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DockPanel.Style>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+                        <Border DockPanel.Dock="Left" Width="3" Background="{StaticResource Mint}" CornerRadius="2" Margin="0,2,12,2" />
+                        <TextBlock Text="Tus playlists" FontSize="30" FontWeight="Bold" />
+                    </DockPanel>
+                    <Button x:Name="CreateButton" DockPanel.Dock="Top" Click="CreatePlaylist" Margin="0,0,0,14">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource CreatePlaylistAction}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Cards.Count}" Value="0"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Grid>
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Focusable="False">
+                            <ItemsControl ItemsSource="{Binding Cards}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Width="181" Height="161" Margin="0,0,12,12" Padding="0"
+                                                Style="{StaticResource LibraryButton}" Click="OpenPlaylist"
+                                                ToolTip="{Binding Name}" AutomationProperties.Name="{Binding Name}"
+                                                IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                            <StackPanel Width="177">
+                                                <Grid Height="109" ClipToBounds="True">
+                                                    <Image Source="{StaticResource LibraryArtwork}" Stretch="UniformToFill" />
+                                                    <Image DataContext="{Binding CoverRow}" Stretch="UniformToFill"
+                                                           Loaded="LoadCardArt" Unloaded="UnloadCardArt" DataContextChanged="ChangeCardArt" />
+                                                    <Image Source="{Binding CustomCover}" Stretch="UniformToFill" />
+                                                </Grid>
+                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" Margin="9,3,9,0" />
+                                                <TextBlock Text="{Binding CardSummary}" Style="{StaticResource SmallLabel}" Margin="9,0,9,4" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        <Border HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="370">
+                            <Border.Style>
+                                <Style TargetType="Border" BasedOn="{StaticResource StatusCard}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Cards.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="&#xE8D6;" Style="{DynamicResource StatusGlyph}" Margin="0,0,12,0" />
+                                <StackPanel>
+                                    <TextBlock Text="Todavía no tienes playlists" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Text="Crea una playlist y añade canciones de tu biblioteca." TextWrapping="Wrap"
+                                               Foreground="{StaticResource Muted}" Margin="0,4,0,0" />
+                                    <Button x:Name="EmptyCreateButton" Style="{StaticResource CreatePlaylistAction}"
+                                            Click="CreatePlaylist" Margin="0,12,0,0" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </DockPanel>
+                <DockPanel>
+                    <DockPanel.Style>
+                        <Style TargetType="DockPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Selected}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DockPanel.Style>
+                    <StackPanel DockPanel.Dock="Top">
+                        <DockPanel Margin="0,0,0,7">
+                            <Button DockPanel.Dock="Left" Content="‹ Playlists" Style="{StaticResource LibraryButton}" Click="BackToPlaylists"
+                                    IsEnabled="{Binding CanEdit}" Margin="0,0,10,0" />
+                            <Button DockPanel.Dock="Right" Content="Editar" Style="{StaticResource LibraryButton}" Click="EditPlaylist"
+                                    IsEnabled="{Binding CanEdit}" Margin="10,0,0,0" />
+                            <Image DockPanel.Dock="Left" Source="{Binding Selected.CustomCover}" Width="42" Height="42"
+                                   Stretch="UniformToFill" Margin="0,0,10,0">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Selected.CustomCover}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Selected.Name}" FontSize="25" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding Selected.Name}" />
+                                <TextBlock Text="{Binding Selected.CardSummary}" Style="{StaticResource SmallLabel}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <TextBlock Text="{Binding Selected.Description}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                   MaxHeight="38" Foreground="{StaticResource Muted}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Margin" Value="0,0,0,8" />
+                                    <Setter Property="ToolTip">
+                                        <Setter.Value>
+                                            <ToolTip MaxWidth="380" Content="{Binding Selected.Description}">
+                                                <ToolTip.ContentTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+                                                </ToolTip.ContentTemplate>
+                                            </ToolTip>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Selected.Description}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Border x:Name="CreationFeedback" CornerRadius="8" Background="#163832" BorderBrush="#397864"
+                                BorderThickness="1" Padding="10,6" Margin="0,0,0,8" Visibility="Collapsed">
+                            <TextBlock x:Name="CreationMessage" Foreground="#CAFFEA" TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite" />
+                        </Border>
+                        <DockPanel Margin="0,0,0,6" IsEnabled="{Binding CanEdit}">
+                            <Button x:Name="PlayPlaylistButton" DockPanel.Dock="Left" Content="Reproducir playlist"
+                                    Style="{StaticResource PlaylistAction}" Click="PlayPlaylist" IsEnabled="{Binding Selected.CanPlay}" />
+                            <Button x:Name="AddTrackButton" DockPanel.Dock="Right" Content="Añadir" Style="{StaticResource PlaylistAction}"
+                                    Click="AddTrack" Margin="6,0,0,4" />
+                            <ComboBox x:Name="SongPicker" ItemsSource="{Binding LibraryRows}" DisplayMemberPath="Song.DisplayName"
+                                      IsTextSearchEnabled="True" TextSearch.TextPath="Song.DisplayName" Style="{StaticResource PlaylistTrackPicker}"
+                                      AutomationProperties.Name="Canción de la biblioteca"
+                                      SelectionChanged="TrackSelectionChanged" Height="30" VerticalAlignment="Top" />
+                        </DockPanel>
+                    </StackPanel>
+                    <WrapPanel x:Name="TrackActions" DockPanel.Dock="Bottom" Margin="0,6,0,0" IsEnabled="{Binding CanEdit}">
+                        <Button x:Name="MoveTrackUp" Content="Subir" Style="{StaticResource PlaylistAction}" Click="MoveUp" />
+                        <Button x:Name="MoveTrackDown" Content="Bajar" Style="{StaticResource PlaylistAction}" Click="MoveDown" />
+                        <Button x:Name="RemoveTrackButton" Content="Quitar canción" Style="{StaticResource PlaylistAction}" Click="RemoveTrack" />
+                    </WrapPanel>
+                    <Border Style="{StaticResource Panel}" Padding="6">
+                        <ListBox x:Name="PlaylistTracks" ItemsSource="{Binding Selected.Tracks}" Background="Transparent"
+                                 BorderThickness="0" Foreground="#F4F9F8" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 SelectionChanged="TrackSelectionChanged" MouseDoubleClick="PlayTrackFromMouse"
+                                 PreviewKeyDown="PlayTrackFromKeyboard" AutomationProperties.Name="Canciones de la playlist">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="5,3">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Duration}" Style="{StaticResource SmallLabel}" Margin="8,0,4,0" />
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Style="{StaticResource SmallLabel}">
+                                                <TextBlock.Text>
+                                                    <Binding Path="Artist" TargetNullValue="" />
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Text="Fuera de la biblioteca actual" Foreground="#FFBEA9" FontSize="12">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsAvailable}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
+    </Grid>
+</UserControl>

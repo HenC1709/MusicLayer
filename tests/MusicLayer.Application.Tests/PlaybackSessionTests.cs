@@ -26,6 +26,28 @@ public sealed class PlaybackSessionTests
     }
 
     [Fact]
+    public async Task RandomNextIsAvailableOnlyWhenAnotherTrackCanBeChosen()
+    {
+        using var tracks = new TestTracks();
+        var session = new PlaybackSession(new PlaySong(new FakePlayer()));
+        Assert.False(session.HasRandomNext);
+        Assert.Null(session.ChooseRandomNextIndex());
+
+        await session.ReplaceQueueAsync([tracks.First]);
+        Assert.Equal(0, session.ChooseRandomNextIndex());
+        await session.PlayAtAsync(0);
+        Assert.False(session.HasRandomNext);
+        Assert.Null(session.ChooseRandomNextIndex());
+
+        await session.ReplaceQueueAsync([tracks.First, tracks.Second]);
+        await session.PlayAtAsync(0);
+        Assert.Equal(1, session.ChooseRandomNextIndex());
+        await session.PlayAtAsync(1);
+        Assert.True(session.HasRandomNext);
+        Assert.Equal(0, session.ChooseRandomNextIndex());
+    }
+
+    [Fact]
     public async Task FailedOrCancelledStartLeavesTheSameTrackAvailableToRetry()
     {
         using var tracks = new TestTracks();

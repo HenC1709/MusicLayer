@@ -243,9 +243,10 @@ public sealed class NAudioPlayer : IAudioPlayer
 
     private void CompletePlayback(Exception? error = null)
     {
+        var completedFile = currentFile;
         try { ReleaseAudio(); }
         catch (Exception cleanupError) { error ??= cleanupError; }
-        PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error));
+        PlaybackEnded?.Invoke(this, new PlaybackEndedEventArgs(error, completedFile));
     }
 
     public ValueTask DisposeAsync() => new(Task.Run(() =>
