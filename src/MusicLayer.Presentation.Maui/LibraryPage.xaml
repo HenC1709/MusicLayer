@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:MusicLayer.Presentation.Maui"
+             x:Class="MusicLayer.Presentation.Maui.LibraryPage"
+             BackgroundColor="#08171E" Title="Biblioteca" SafeAreaEdges="All">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Padding="22,16,22,8" RowSpacing="10">
+        <Label Text="♫  Tonic" TextColor="#25D7B1" FontAttributes="Bold" FontSize="18" />
+        <Label Grid.Row="1" Text="Tu biblioteca" FontSize="34" FontAttributes="Bold" TextColor="#F2F8F7"
+               SemanticProperties.HeadingLevel="Level1" />
+        <Button Grid.Row="2" x:Name="ImportButton" Text="Elegir canciones" Clicked="ChooseSongs"
+                BackgroundColor="#25D7B1" TextColor="#08231F" FontAttributes="Bold" CornerRadius="12" />
+        <SearchBar Grid.Row="3" x:Name="Search" Placeholder="Buscar por título, artista o álbum"
+                   TextChanged="SearchChanged" TextColor="#F2F8F7" PlaceholderColor="#A4B8BE"
+                   BackgroundColor="#112830" IsVisible="False" />
+        <Label Grid.Row="4" x:Name="Status" Text="Elegí archivos MP3, WAV o FLAC para verlos aquí."
+               TextColor="#A4B8BE" FontSize="14" />
+        <CollectionView Grid.Row="5" x:Name="TrackList" SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="local:LibraryTrack">
+                    <Grid ColumnDefinitions="52,*,Auto" RowDefinitions="Auto,Auto" Padding="0,7" ColumnSpacing="12">
+                        <Border Grid.RowSpan="2" StrokeThickness="0" StrokeShape="RoundRectangle 9"
+                                BackgroundColor="#16333C" WidthRequest="52" HeightRequest="52">
+                            <Grid>
+                                <Label Text="♫" TextColor="#25D7B1" HorizontalOptions="Center"
+                                       VerticalOptions="Center" FontSize="23" />
+                                <Image Source="{Binding Artwork}" Aspect="AspectFill" />
+                            </Grid>
+                        </Border>
+                        <Label Grid.Column="1" Text="{Binding Row.Song.DisplayName}" FontAttributes="Bold"
+                               VerticalOptions="End" LineBreakMode="TailTruncation" TextColor="#F2F8F7" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding Artist}" LineBreakMode="TailTruncation"
+                               TextColor="#A4B8BE" FontSize="13" />
+                        <Label Grid.Column="2" Grid.RowSpan="2" Text="{Binding Row.FileFormat}"
+                               VerticalOptions="Center" TextColor="#78CCC0" FontSize="12" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

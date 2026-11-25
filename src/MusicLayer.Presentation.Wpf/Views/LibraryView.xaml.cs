@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using MusicLayer.Presentation.Wpf.ViewModels;
+using MusicLayer.Shared.ViewModels;
 
 namespace MusicLayer.Presentation.Wpf.Views;
 

@@ -11,5 +11,6 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <ProjectReference Include="..\MusicLayer.Application\MusicLayer.Application.csproj" />
     <ProjectReference Include="..\MusicLayer.Infrastructure\MusicLayer.Infrastructure.csproj" />
+    <ProjectReference Include="..\MusicLayer.Shared\MusicLayer.Shared.csproj" />
   </ItemGroup>
 </Project>

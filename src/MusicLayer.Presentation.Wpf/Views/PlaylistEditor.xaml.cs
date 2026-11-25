@@ -4,18 +4,18 @@ using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using MusicLayer.Presentation.Wpf.ViewModels;
+using MusicLayer.Shared.ViewModels;
 
 namespace MusicLayer.Presentation.Wpf.Views;
 
 public partial class PlaylistEditor : Window
 {
-    private readonly PlaylistsViewModel model;
+    private readonly PlaylistsViewModel<BitmapSource> model;
     private readonly Guid? playlistId;
     private byte[]? cover;
     private bool saving;
 
-    public PlaylistEditor(Window owner, PlaylistsViewModel model, PlaylistCard? playlist)
+    public PlaylistEditor(Window owner, PlaylistsViewModel<BitmapSource> model, PlaylistCard<BitmapSource>? playlist)
     {
         InitializeComponent();
         Owner = owner;

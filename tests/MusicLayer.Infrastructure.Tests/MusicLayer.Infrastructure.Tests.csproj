@@ -8,5 +8,6 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <ProjectReference Include="..\..\src\MusicLayer.Infrastructure\MusicLayer.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\MusicLayer.Shared\MusicLayer.Shared.csproj" />
   </ItemGroup>
 </Project>

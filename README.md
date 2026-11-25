@@ -25,14 +25,18 @@ Reproductor de música de escritorio para Windows, desarrollado en C# con WPF y 
 
 ## Arquitectura
 
-Las flechas indican referencias directas entre proyectos. El arranque de WPF registra las implementaciones de Infrastructure para los contratos de Application.
+Las flechas indican referencias directas entre proyectos. El arranque de WPF registra los adaptadores de Infrastructure y los lectores de metadatos de Shared para los contratos de Application.
 
 ```mermaid
 flowchart TD
     WPF["Presentation.Wpf"] --> APP["Application"]
     WPF --> INF["Infrastructure"]
+    WPF --> SHARED["Shared"]
+    MAUI["Presentation.Maui (Android)"] --> SHARED
+    SHARED --> APP
+    SHARED --> DOM["Domain"]
     INF --> APP
-    INF --> DOM["Domain"]
+    INF --> DOM
     APP --> DOM
 ```
 
@@ -40,12 +44,36 @@ flowchart TD
 | --- | --- |
 | `MusicLayer.Domain` | Entidades y reglas de la biblioteca y reproducción. |
 | `MusicLayer.Application` | Casos de uso y contratos entre capas. |
-| `MusicLayer.Infrastructure` | Acceso a archivos, audio, metadatos y persistencia SQLite. |
+| `MusicLayer.Shared` | ViewModels, lectura de metadatos y carátulas mediante TagLibSharp. |
+| `MusicLayer.Infrastructure` | Escaneo de archivos, audio para Windows, caché de letras y persistencia SQLite. |
 | `MusicLayer.Presentation.Wpf` | Aplicación de escritorio y presentación WPF. |
+| `MusicLayer.Presentation.Maui` | Biblioteca de Android, selección de archivos y miniaturas de carátulas. |
 | `MusicLayer.Domain.Tests` | Pruebas de reglas de dominio. |
 | `MusicLayer.Application.Tests` | Pruebas de casos de uso. |
 | `MusicLayer.Infrastructure.Tests` | Pruebas de escaneo, audio, metadatos y persistencia local. |
 | `MusicLayer.Presentation.Tests` | Pruebas del ViewModel. |
+
+### Base para .NET MAUI
+
+`MusicLayer.Shared` usa `net10.0` y referencia los modelos de Domain y los contratos y casos de uso de Application. WPF le suministra el decodificador de carátulas. La app Android reutiliza el navegador de la biblioteca y los lectores de TagLibSharp.
+
+```powershell
+dotnet build .\src\MusicLayer.Shared\MusicLayer.Shared.csproj
+```
+
+### Biblioteca para Android
+
+En Android de 64 bits, versión 7.0 o posterior, abrí **Tonic → Elegir canciones** y seleccioná uno o varios MP3, WAV o FLAC. La selección reemplaza la biblioteca de la sesión. Podés buscar por título, artista o álbum. Si falta el título, se muestra el nombre del archivo. Una nota musical identifica las pistas sin portada legible.
+
+Con el SDK de .NET 10, la carga `maui-android`, el SDK de Android y un JDK compatible, podés generar una APK de prueba desde la raíz del repositorio:
+
+```powershell
+dotnet build .\src\MusicLayer.Presentation.Maui\MusicLayer.Presentation.Maui.csproj -c Debug
+```
+
+Para instalarla en el teléfono, usá el archivo `com.musiclayer.tonic-Signed.apk` de `bin/Debug/net10.0-android/` del proyecto MAUI. La reproducción y la recuperación de la biblioteca al reiniciar corresponden a las siguientes tareas.
+
+Si instalaste las herramientas en `C:\Android`, añadí `-p:AndroidSdkDirectory=C:/Android/Sdk -p:JavaSdkDirectory=C:/Android/jdk` al comando de compilación.
 
 ## Plan de trabajo
 

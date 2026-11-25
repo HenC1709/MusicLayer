@@ -18,47 +18,6 @@
                 <Setter Property="Background" Value="Transparent" />
             </Style>
             <Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" />
-            <Style x:Key="TrackFavorite" TargetType="ToggleButton">
-                <Setter Property="Width" Value="36" />
-                <Setter Property="Height" Value="34" />
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="ToolTip" Value="Marcar como favorita" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ToggleButton">
-                            <Border x:Name="Frame" Background="#B310242C" BorderBrush="#425A61"
-                                    BorderThickness="1" CornerRadius="9">
-                                <TextBlock x:Name="Heart" Text="&#xEB51;" Style="{StaticResource Glyph}"
-                                           HorizontalAlignment="Center" Foreground="{StaticResource InkBrush}" />
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Heart" Property="Text" Value="&#xEB52;" />
-                                    <Setter TargetName="Heart" Property="Foreground" Value="{StaticResource Mint}" />
-                                    <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Mint}" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Frame" Property="Background" Value="#1A494C" />
-                                </Trigger>
-                                <Trigger Property="IsKeyboardFocused" Value="True">
-                                    <Setter TargetName="Frame" Property="BorderBrush" Value="White" />
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="Frame" Property="Opacity" Value=".48" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding CoverRow}" Value="{x:Null}">
-                        <Setter Property="IsEnabled" Value="False" />
-                    </DataTrigger>
-                    <Trigger Property="IsChecked" Value="True">
-                        <Setter Property="ToolTip" Value="Quitar de favoritas" />
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid Background="{DynamicResource LibraryAmbient}">
@@ -116,18 +75,32 @@
                                     <TextBlock Text="{Binding CoverAudioDetails}" Foreground="{StaticResource Muted}" FontSize="12" Style="{StaticResource OptionalMetadata}" />
                                 </WrapPanel>
                                 <WrapPanel x:Name="Actions" Margin="0,14,0,0">
-                                    <Button x:Name="PrimaryAction" Content="{Binding TransportLabel}" Click="TogglePlayback" IsEnabled="{Binding CanTogglePlayback}"
+                                    <Button x:Name="PrimaryAction" Content="{Binding TransportLabel}" Click="TogglePlayback" IsEnabled="{Binding CanTogglePlayback}" MinHeight="40"
                                             Background="{StaticResource Mint}" Foreground="#092A26" FontWeight="Bold" Margin="0,0,6,4" />
-                                    <ToggleButton x:Name="FavoriteAction" Style="{StaticResource TrackFavorite}"
-                                                  IsChecked="{Binding CoverRow.IsFavorite, Mode=TwoWay, FallbackValue=False}"
-                                                  AutomationProperties.Name="Favorita" Margin="0,0,6,4" />
-                                    <Button x:Name="MoreActions" Style="{StaticResource LibraryButton}" Width="36" Padding="0"
+                                    <ToggleButton x:Name="FavoriteAction" IsChecked="{Binding CoverRow.IsFavorite, Mode=TwoWay, FallbackValue=False}"
+                                                  AutomationProperties.Name="Favorita" Margin="0,0,6,4">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton" BasedOn="{StaticResource FavoriteToggle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CoverRow}" Value="{x:Null}">
+                                                        <Setter Property="IsEnabled" Value="False" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                    </ToggleButton>
+                                    <Button x:Name="MoreActions" Style="{StaticResource LibraryButton}" Width="40" MinHeight="40" Padding="0"
                                             IsEnabled="False" AutomationProperties.Name="Más opciones"
                                             ToolTip="Más opciones próximamente" ToolTipService.ShowOnDisabled="True" Margin="0,0,6,4">
                                         <TextBlock Text="&#xE712;" Style="{StaticResource Glyph}" />
                                     </Button>
-                                    <Button Content="Letras" Click="OpenLyrics"
-                                            Background="{StaticResource RaisedBrush}" BorderBrush="#385E66" Margin="0,0,0,4" />
+                                    <Button Click="OpenLyrics" MinHeight="40" AutomationProperties.Name="Abrir Letras"
+                                            Background="{StaticResource RaisedBrush}" BorderBrush="#385E66" Margin="0,0,0,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE8A4;" FontFamily="Segoe MDL2 Assets" Margin="0,0,7,0" />
+                                            <TextBlock Text="Letras" />
+                                        </StackPanel>
+                                    </Button>
                                 </WrapPanel>
                             </StackPanel>
                         </DockPanel>

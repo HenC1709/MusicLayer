@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using MusicLayer.Domain.Entities;
 
-namespace MusicLayer.Presentation.Wpf.ViewModels;
+namespace MusicLayer.Shared.ViewModels;
 
 public sealed class SongRow(Song song, int index) : INotifyPropertyChanged
 {
@@ -10,7 +10,7 @@ public sealed class SongRow(Song song, int index) : INotifyPropertyChanged
     public int Index { get; } = index;
     public int Number => Index + 1;
     public string FileFormat => Song.FileFormat;
-    public string DurationText => Song.Metadata?.Duration is { } duration ? MainViewModel.FormatPlaybackTime(duration) : "—";
+    public string DurationText => Song.Metadata?.Duration is { } duration ? PlaybackTime.Format(duration) : "—";
     public bool IsFavorite
     {
         get;
@@ -93,7 +93,7 @@ public sealed class LibraryBrowser : INotifyPropertyChanged
 
     internal void RestoreFavorites(IEnumerable<string> paths) => favorites.UnionWith(paths);
 
-    internal void ReplaceRows(IReadOnlyList<SongRow> rows)
+    public void ReplaceRows(IReadOnlyList<SongRow> rows)
     {
         foreach (var row in source) row.PropertyChanged -= OnFavoriteChanged;
         source = rows;

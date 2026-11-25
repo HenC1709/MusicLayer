@@ -10,8 +10,8 @@
             </ResourceDictionary.MergedDictionaries>
             <BitmapImage x:Key="FallbackCover" UriSource="../Resources/Art/LibraryArtwork.png" />
             <Style x:Key="TextSizeArrow" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="Width" Value="34" />
-                <Setter Property="MinHeight" Value="30" />
+                <Setter Property="Width" Value="40" />
+                <Setter Property="MinHeight" Value="40" />
                 <Setter Property="Padding" Value="0" />
                 <Setter Property="Background" Value="#193D42" />
                 <Setter Property="BorderBrush" Value="#396A6C" />

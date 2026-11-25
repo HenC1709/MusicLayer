@@ -2,7 +2,7 @@ using MusicLayer.Application.Abstractions;
 using MusicLayer.Domain.Entities;
 using TagLib;
 
-namespace MusicLayer.Infrastructure.Metadata;
+namespace MusicLayer.Shared.Metadata;
 
 public sealed class TagLibTrackMetadataReader : ITrackMetadataReader
 {

@@ -3,12 +3,14 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using MusicLayer.Presentation.Wpf.ViewModels;
+using MusicLayer.Shared.ViewModels;
 
 namespace MusicLayer.Presentation.Wpf.Views;
 
 public partial class NowPlayingView : UserControl
 {
     private readonly SongThumbnailLoader thumbnails = new();
+    private bool hasOpened;
     private MainViewModel? Model => DataContext as MainViewModel;
 
     public event RoutedEventHandler? ImportRequested;
@@ -19,7 +21,8 @@ public partial class NowPlayingView : UserControl
         InitializeComponent();
         IsVisibleChanged += (_, _) =>
         {
-            if (!IsVisible) return;
+            if (!IsVisible || hasOpened) return;
+            hasOpened = true;
             var active = Model?.CurrentQueueIndex ?? -1;
             if (active >= 0 && active < QueueList.Items.Count)
                 QueueList.ScrollIntoView(QueueList.Items[active]);

@@ -6,6 +6,7 @@ using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Domain.Entities;
 using MusicLayer.Infrastructure.Lyrics;
 using MusicLayer.Presentation.Wpf.ViewModels;
+using MusicLayer.Shared.ViewModels;
 using Xunit;
 
 namespace MusicLayer.Presentation.Tests;

@@ -67,8 +67,8 @@
                 </Setter>
             </Style>
             <Style x:Key="ShuffleTransport" TargetType="ToggleButton">
-                <Setter Property="Width" Value="36" />
-                <Setter Property="Height" Value="36" />
+                <Setter Property="Width" Value="40" />
+                <Setter Property="Height" Value="40" />
                 <Setter Property="Margin" Value="3,0" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
@@ -95,6 +95,9 @@
                                 <Trigger Property="IsKeyboardFocused" Value="True">
                                     <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource InkBrush}" />
                                 </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Surface" Property="Opacity" Value=".45" />
+                                </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
@@ -106,7 +109,7 @@
                 </Style.Triggers>
             </Style>
             <Style x:Key="PrimaryTransport" TargetType="Button" BasedOn="{StaticResource Transport}">
-                <Setter Property="Width" Value="42" /><Setter Property="Height" Value="42" />
+                <Setter Property="Width" Value="46" /><Setter Property="Height" Value="46" />
                 <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
                     <Border x:Name="Circle" Background="#48EDBD" CornerRadius="24" BorderThickness="1" BorderBrush="Transparent">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -131,7 +134,7 @@
                         <TextBlock x:Name="Brand" Text="Tonic" FontSize="22" Margin="9,0,0,0" FontWeight="Bold" />
                     </StackPanel>
                     <Button x:Name="NavigationMenuButton" DockPanel.Dock="Top" Click="OpenNavigationMenu" Margin="0,0,0,9"
-                            Padding="8,4" Background="{StaticResource RaisedBrush}" BorderBrush="#304950"
+                            MinHeight="38" Padding="8,4" Background="{StaticResource RaisedBrush}" BorderBrush="#304950"
                             ToolTip="Abrir menú de navegación" AutomationProperties.Name="Abrir menú de navegación">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" FontSize="16" />
@@ -141,7 +144,7 @@
                     <StackPanel DockPanel.Dock="Top">
                         <RadioButton x:Name="Library" Content="Biblioteca" Tag="&#xE8F1;" ToolTip="Biblioteca" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="True" />
                         <RadioButton x:Name="NowPlaying" Content="Reproducción" Tag="&#xE768;" ToolTip="Reproducción" GroupName="Screen" Style="{StaticResource RailLink}" />
-                        <RadioButton x:Name="LyricsTab" Content="Letras" Tag="&#xE8A4;" ToolTip="Letras" GroupName="Screen" Style="{StaticResource RailLink}" IsChecked="{Binding Lyrics.IsOpen, Mode=TwoWay}" />
+                        <RadioButton x:Name="LyricsTab" Content="Letras" Tag="&#xE8A4;" ToolTip="Letras" GroupName="Screen" Style="{StaticResource RailLink}" />
                         <RadioButton x:Name="PlaylistsTab" Content="Playlists" Tag="&#xE8D6;" ToolTip="Playlists" GroupName="Screen" Style="{StaticResource RailLink}" />
                         <RadioButton x:Name="SettingsTab" Content="Configuración" Tag="&#xE713;" ToolTip="Configuración" GroupName="Screen" Style="{StaticResource RailLink}" />
                     </StackPanel>
@@ -151,7 +154,24 @@
                     </StackPanel>
                 </DockPanel>
             </Border>
-            <Grid x:Name="ScreenHost" Grid.Column="1">
+            <DockPanel x:Name="ScreenHost" Grid.Column="1">
+                <Border DockPanel.Dock="Top" Background="#0B1820" BorderBrush="{StaticResource LibraryBrush}"
+                        BorderThickness="0,0,0,1" Padding="12,3">
+                    <StackPanel Orientation="Horizontal" AutomationProperties.Name="Historial de pantallas">
+                        <Button x:Name="ScreenBack" Click="GoBackScreen" IsEnabled="False" Style="{StaticResource Transport}"
+                                Background="{StaticResource RaisedBrush}" ToolTip="Volver a la pantalla anterior (Alt+Izquierda)">
+                            <Path Data="M 10,1 L 3,8 L 10,15" Stroke="{StaticResource InkBrush}" StrokeThickness="2"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Button>
+                        <Button x:Name="ScreenForward" Click="GoForwardScreen" IsEnabled="False" Style="{StaticResource Transport}"
+                                Background="{StaticResource RaisedBrush}" ToolTip="Ir a la pantalla siguiente (Alt+Derecha)">
+                            <Path Data="M 3,1 L 10,8 L 3,15" Stroke="{StaticResource InkBrush}" StrokeThickness="2"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Button>
+                        <TextBlock Text="Historial de pantallas" Style="{StaticResource Caption}" Margin="9,0,0,0" />
+                    </StackPanel>
+                </Border>
+                <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid Background="{StaticResource LibraryAmbient}">
                     <Grid.Resources><Style TargetType="ScrollBar" BasedOn="{StaticResource SongScrollBar}" /></Grid.Resources>
@@ -367,7 +387,8 @@
                         </TextBlock>
                     </StackPanel>
                 </Border>
-            </Grid>
+                </Grid>
+            </DockPanel>
             <Grid x:Name="NavigationOverlay" Grid.ColumnSpan="2" Visibility="Collapsed">
                 <Border x:Name="NavigationBackdrop" Background="#A9040B11" MouseLeftButtonDown="DismissNavigationBackdrop" />
                 <Border x:Name="NavigationPanel" Width="382" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,12,10,12" Padding="14"
@@ -453,11 +474,11 @@
                 </Border>
             </Grid>
         </Grid>
-        <Border Grid.Row="1" Background="#0B1820" Padding="16,11"
+        <Border x:Name="PlayerBar" Grid.Row="1" Background="#0B1820" Padding="16,11"
                 BorderThickness="0,1,0,0" BorderBrush="{StaticResource LibraryBrush}">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" /><ColumnDefinition Width="1.5*" MinWidth="200" /><ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" /><ColumnDefinition Width="1.5*" MinWidth="284" /><ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <DockPanel VerticalAlignment="Center" Margin="0,0,12,0">
                     <Image Width="44" Height="44" Margin="0,0,10,0">
@@ -471,7 +492,8 @@
                         </Image.Style>
                     </Image>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CurrentSong.DisplayName, FallbackValue=Sin pista activa}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding CurrentSong.DisplayName, FallbackValue=Sin pista activa}" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding CurrentSong.DisplayName}" />
                         <TextBlock Text="{Binding CurrentSong.Metadata.Artist, FallbackValue='', TargetNullValue=''}" Style="{StaticResource Caption}" />
                     </StackPanel>
                 </DockPanel>
@@ -506,6 +528,24 @@
                                       IsChecked="{Binding IsShuffleEnabled, Mode=TwoWay}" />
                         <Button Style="{StaticResource Transport}" Click="Stop" ToolTip="Detener" IsEnabled="{Binding CanStop}">
                             <Border Width="12" Height="12" Background="{StaticResource InkBrush}" CornerRadius="2" />
+                        </Button>
+                        <Button x:Name="PlayerLyrics" Click="ShowLyrics">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Transport}">
+                                    <Setter Property="ToolTip" Value="Abrir Letras" />
+                                    <Setter Property="Background" Value="{StaticResource RaisedBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsChecked, ElementName=LyricsTab}" Value="True">
+                                            <Setter Property="Background" Value="#174740" />
+                                            <Setter Property="BorderBrush" Value="#48EDBD" />
+                                            <Setter Property="Foreground" Value="#68F6CF" />
+                                            <Setter Property="ToolTip" Value="Volver desde Letras" />
+                                            <Setter Property="AutomationProperties.ItemStatus" Value="Letras abiertas" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <TextBlock Text="&#xE8A4;" FontFamily="Segoe MDL2 Assets" FontSize="19" />
                         </Button>
                     </StackPanel>
                     <DockPanel Margin="0,5,0,0">

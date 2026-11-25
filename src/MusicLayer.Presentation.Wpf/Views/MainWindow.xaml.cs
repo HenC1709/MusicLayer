@@ -13,6 +13,8 @@ namespace MusicLayer.Presentation.Wpf.Views;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel viewModel;
+    private readonly List<RadioButton> screenHistory = [];
+    private int screenHistoryIndex;
     private readonly DispatcherTimer progressTimer = new(DispatcherPriority.Background)
     {
         Interval = TimeSpan.FromMilliseconds(250)
@@ -29,6 +31,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         TonicLogo.Source = (Icon as BitmapFrame)?.Decoder?.Frames.MaxBy(frame => frame.PixelWidth) ?? Icon;
         this.viewModel = viewModel;
+        screenHistory.Add(Library);
+        foreach (var screen in new[] { Library, NowPlaying, LyricsTab, PlaylistsTab, SettingsTab })
+            screen.Checked += ScreenChecked;
         viewModel.PropertyChanged += OnViewModelChanged;
         DataContext = viewModel;
         Loaded += RestorePreferences;
@@ -76,7 +81,46 @@ public partial class MainWindow : Window
             LibraryScreen.FocusSearch();
             e.Handled = true;
         }
+        else if (Keyboard.Modifiers == ModifierKeys.Alt && !NavigationOverlay.IsVisible)
+        {
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key == Key.Left) e.Handled = GoToHistory(-1);
+            if (key == Key.Right) e.Handled = GoToHistory(1);
+        }
     }
+
+    private void ScreenChecked(object sender, RoutedEventArgs e)
+    {
+        var screen = (RadioButton)sender;
+        // Keep the lyrics session alive after the first visit so it can follow playback between screens.
+        if (screen == LyricsTab) viewModel.Lyrics.IsOpen = true;
+        if (screen == screenHistory[screenHistoryIndex]) return;
+
+        screenHistory.RemoveRange(screenHistoryIndex + 1, screenHistory.Count - screenHistoryIndex - 1);
+        screenHistory.Add(screen);
+        screenHistoryIndex++;
+        UpdateHistoryButtons();
+    }
+
+    private bool GoToHistory(int direction)
+    {
+        int next = screenHistoryIndex + direction;
+        if (next < 0 || next >= screenHistory.Count) return false;
+
+        screenHistoryIndex = next;
+        screenHistory[next].IsChecked = true;
+        UpdateHistoryButtons();
+        return true;
+    }
+
+    private void UpdateHistoryButtons()
+    {
+        ScreenBack.IsEnabled = screenHistoryIndex > 0;
+        ScreenForward.IsEnabled = screenHistoryIndex + 1 < screenHistory.Count;
+    }
+
+    private void GoBackScreen(object sender, RoutedEventArgs e) => GoToHistory(-1);
+    private void GoForwardScreen(object sender, RoutedEventArgs e) => GoToHistory(1);
 
     private void OpenNavigationMenu(object sender, RoutedEventArgs e)
     {
@@ -103,6 +147,7 @@ public partial class MainWindow : Window
     {
         KeyboardNavigation.SetTabNavigation(NavigationRail, mode);
         KeyboardNavigation.SetTabNavigation(ScreenHost, mode);
+        KeyboardNavigation.SetTabNavigation(PlayerBar, mode);
     }
 
     private void DismissNavigationMenu(object sender, RoutedEventArgs e) => CloseNavigationMenu();
@@ -121,7 +166,12 @@ public partial class MainWindow : Window
         ChooseFolder(sender, e);
     }
 
-    private void ShowLyrics(object sender, RoutedEventArgs e) => LyricsTab.IsChecked = true;
+    private void ShowLyrics(object sender, RoutedEventArgs e)
+    {
+        CloseNavigationMenu(restoreFocus: false);
+        if (LyricsTab.IsChecked == true) GoToHistory(-1);
+        else LyricsTab.IsChecked = true;
+    }
 
     private void ChooseAnotherSong(object sender, RoutedEventArgs e)
     {

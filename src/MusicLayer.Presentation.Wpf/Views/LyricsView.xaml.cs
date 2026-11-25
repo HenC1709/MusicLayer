@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using MusicLayer.Presentation.Wpf.ViewModels;
+using MusicLayer.Shared.ViewModels;
 
 namespace MusicLayer.Presentation.Wpf.Views;
 
@@ -56,11 +56,7 @@ public partial class LyricsView : UserControl
         ApplyTextSizes(0, compact: true);
         scrollTimer.Tick += AnimateScroll;
         manualScrollTimer.Tick += ResumeAfterScrolling;
-        IsVisibleChanged += (_, _) =>
-        {
-            ResetFollowing();
-            FollowActive();
-        };
+        IsVisibleChanged += (_, _) => FollowActive();
     }
 
     private void UpdateAmbient(BitmapSource? cover)

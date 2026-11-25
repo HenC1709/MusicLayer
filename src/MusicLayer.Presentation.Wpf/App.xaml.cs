@@ -9,7 +9,7 @@ using MusicLayer.Application.UseCases.Playback;
 using MusicLayer.Infrastructure.Audio;
 using MusicLayer.Infrastructure.FileSystem;
 using MusicLayer.Infrastructure.Lyrics;
-using MusicLayer.Infrastructure.Metadata;
+using MusicLayer.Shared.Metadata;
 using MusicLayer.Infrastructure.Persistence;
 using MusicLayer.Presentation.Wpf.ViewModels;
 using MusicLayer.Presentation.Wpf.Views;

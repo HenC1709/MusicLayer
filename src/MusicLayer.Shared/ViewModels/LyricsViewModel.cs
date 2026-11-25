@@ -4,7 +4,7 @@ using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Domain.Entities;
 
-namespace MusicLayer.Presentation.Wpf.ViewModels;
+namespace MusicLayer.Shared.ViewModels;
 
 public enum LyricEmphasis { Distant, Nearby, Active }
 

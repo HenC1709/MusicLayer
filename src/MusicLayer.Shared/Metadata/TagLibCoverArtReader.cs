@@ -1,7 +1,7 @@
 using MusicLayer.Application.Abstractions;
 using TagLib;
 
-namespace MusicLayer.Infrastructure.Metadata;
+namespace MusicLayer.Shared.Metadata;
 
 public sealed class TagLibCoverArtReader : ICoverArtReader
 {

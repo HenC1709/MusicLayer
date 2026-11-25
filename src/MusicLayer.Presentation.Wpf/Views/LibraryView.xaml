@@ -106,7 +106,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="26"/><ColumnDefinition Width="39"/><ColumnDefinition Width="1.5*"/>
                                 <ColumnDefinition Width="{DynamicResource ArtistColumn}"/><ColumnDefinition Width="{DynamicResource AlbumColumn}"/>
-                                <ColumnDefinition Width="{DynamicResource TimeColumn}"/><ColumnDefinition Width="36"/>
+                                <ColumnDefinition Width="{DynamicResource TimeColumn}"/><ColumnDefinition Width="44"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="#" Style="{StaticResource SmallLabel}" />
                             <TextBlock Grid.Column="2" Text="TÍTULO" Style="{StaticResource SmallLabel}" FontSize="10" />
@@ -124,7 +124,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="26"/><ColumnDefinition Width="39"/><ColumnDefinition Width="1.5*"/>
                                         <ColumnDefinition Width="{DynamicResource ArtistColumn}"/><ColumnDefinition Width="{DynamicResource AlbumColumn}"/>
-                                        <ColumnDefinition Width="{DynamicResource TimeColumn}"/><ColumnDefinition Width="36"/>
+                                        <ColumnDefinition Width="{DynamicResource TimeColumn}"/><ColumnDefinition Width="44"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource SmallLabel}">
                                         <Setter Property="Text" Value="{Binding Number}" />
@@ -141,19 +141,9 @@
                                     <TextBlock Grid.Column="3" Text="{Binding Song.Metadata.Artist, FallbackValue=—, TargetNullValue=—}" Style="{StaticResource SmallLabel}" Margin="0,0,6,0" />
                                     <TextBlock Grid.Column="4" Text="{Binding Song.Metadata.Album, FallbackValue=—, TargetNullValue=—}" Style="{StaticResource SmallLabel}" Margin="0,0,6,0" />
                                     <TextBlock Grid.Column="5" Text="{Binding DurationText}" Style="{StaticResource SmallLabel}" />
-                                    <ToggleButton Grid.Column="6" IsChecked="{Binding IsFavorite, Mode=TwoWay}" Focusable="True"
-                                                  ToolTip="Marcar o quitar favorita" AutomationProperties.Name="{Binding Song.DisplayName, StringFormat='Favorita · {0}'}" Cursor="Hand">
-                                        <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
-                                            <Border x:Name="HeartSurface" Background="Transparent" BorderThickness="1" CornerRadius="6" Width="28" Height="28">
-                                                <TextBlock x:Name="Heart" Text="&#xEB51;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" Foreground="{StaticResource Muted}" />
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsChecked" Value="True"><Setter TargetName="Heart" Property="Text" Value="&#xEB52;" /><Setter TargetName="Heart" Property="Foreground" Value="{StaticResource Mint}" /></Trigger>
-                                                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="HeartSurface" Property="BorderBrush" Value="White" /></Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="HeartSurface" Property="Background" Value="#235256" /></Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate></ToggleButton.Template>
-                                    </ToggleButton>
+                                    <ToggleButton Grid.Column="6" Style="{StaticResource FavoriteToggle}"
+                                                  IsChecked="{Binding IsFavorite, Mode=TwoWay}"
+                                                  AutomationProperties.Name="{Binding Song.DisplayName, StringFormat='Favorita · {0}'}" />
                                 </Grid>
                             </DataTemplate></ListBox.ItemTemplate>
                         </ListBox>

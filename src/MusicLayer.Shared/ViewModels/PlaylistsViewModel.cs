@@ -1,11 +1,9 @@
 using System.ComponentModel;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Windows.Media.Imaging;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Domain.Entities;
 
-namespace MusicLayer.Presentation.Wpf.ViewModels;
+namespace MusicLayer.Shared.ViewModels;
 
 public sealed record PlaylistTrack(string FilePath, SongRow? Row)
 {
@@ -15,7 +13,8 @@ public sealed record PlaylistTrack(string FilePath, SongRow? Row)
     public bool IsAvailable => Row is not null;
 }
 
-public sealed record PlaylistCard(Playlist Data, IReadOnlyList<PlaylistTrack> Tracks)
+public sealed record PlaylistCard<TCover>(Playlist Data, IReadOnlyList<PlaylistTrack> Tracks, TCover? CustomCover)
+    where TCover : class
 {
     public Guid Id => Data.Id;
     public string Name => Data.Name;
@@ -23,22 +22,12 @@ public sealed record PlaylistCard(Playlist Data, IReadOnlyList<PlaylistTrack> Tr
     public string? Genre => Data.Genre;
     public string? Description => Data.Description;
     public string CardSummary => Genre is null ? Summary : $"{Genre} · {Summary}";
-    public BitmapSource? CustomCover { get; } = DecodeCustomCover(Data.Cover);
     public SongRow? CoverRow => CustomCover is null ? Tracks.FirstOrDefault(track => track.IsAvailable)?.Row : null;
     public bool CanPlay => Tracks.Any(track => track.IsAvailable);
-
-    private static BitmapSource? DecodeCustomCover(byte[]? cover)
-    {
-        try { return MainViewModel.DecodeCover(cover, 512); }
-        catch (Exception error) when (error is IOException or NotSupportedException or ArgumentException)
-        {
-            return null;
-        }
-    }
 }
 
-public sealed class PlaylistsViewModel(IPlaylistRepository repository, CancellationToken cancellationToken)
-    : INotifyPropertyChanged
+public sealed class PlaylistsViewModel<TCover>(IPlaylistRepository repository, Func<byte[]?, int, TCover?> decodeCover,
+    CancellationToken cancellationToken) : INotifyPropertyChanged where TCover : class
 {
     private readonly List<Playlist> saved = [];
     private Dictionary<string, SongRow> byPath = new(StringComparer.OrdinalIgnoreCase);
@@ -50,8 +39,8 @@ public sealed class PlaylistsViewModel(IPlaylistRepository repository, Cancellat
     public bool CanEdit => loaded && !busy && !cancellationToken.IsCancellationRequested;
     public string? Error { get; private set; }
     public IReadOnlyList<SongRow> LibraryRows { get; private set; } = [];
-    public IReadOnlyList<PlaylistCard> Cards { get; private set; } = [];
-    public PlaylistCard? Selected { get; private set; }
+    public IReadOnlyList<PlaylistCard<TCover>> Cards { get; private set; } = [];
+    public PlaylistCard<TCover>? Selected { get; private set; }
 
     internal Task InitializeAsync() => RunAsync(async () =>
     {
@@ -145,11 +134,21 @@ public sealed class PlaylistsViewModel(IPlaylistRepository repository, Cancellat
     private void RefreshCards(Guid? id)
     {
         Cards = saved.OrderBy(playlist => playlist.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(playlist => new PlaylistCard(playlist, playlist.TrackPaths
-                .Select(path => new PlaylistTrack(path, byPath.GetValueOrDefault(path))).ToArray()))
+            .Select(playlist => new PlaylistCard<TCover>(playlist, playlist.TrackPaths
+                .Select(path => new PlaylistTrack(path, byPath.GetValueOrDefault(path))).ToArray(),
+                DecodeCustomCover(playlist.Cover)))
             .ToArray();
         Notify(nameof(Cards));
         Open(id);
+    }
+
+    private TCover? DecodeCustomCover(byte[]? cover)
+    {
+        try { return decodeCover(cover, 512); }
+        catch (Exception error) when (error is IOException or NotSupportedException or ArgumentException)
+        {
+            return null;
+        }
     }
 
     private Task RunAsync(Func<Task> operation)

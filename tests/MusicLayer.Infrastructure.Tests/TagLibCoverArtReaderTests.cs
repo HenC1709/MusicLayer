@@ -1,4 +1,4 @@
-using MusicLayer.Infrastructure.Metadata;
+using MusicLayer.Shared.Metadata;
 using Xunit;
 
 namespace MusicLayer.Infrastructure.Tests;

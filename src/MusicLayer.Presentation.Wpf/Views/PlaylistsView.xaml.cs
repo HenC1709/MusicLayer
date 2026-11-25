@@ -3,14 +3,16 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using MusicLayer.Presentation.Wpf.ViewModels;
+using MusicLayer.Shared.ViewModels;
 
 namespace MusicLayer.Presentation.Wpf.Views;
 
 public partial class PlaylistsView : UserControl
 {
     private readonly SongThumbnailLoader thumbnails = new();
-    private PlaylistsViewModel? Model => DataContext as PlaylistsViewModel;
+    private PlaylistsViewModel<BitmapSource>? Model => DataContext as PlaylistsViewModel<BitmapSource>;
     private MainViewModel? Player => Window.GetWindow(this)?.DataContext as MainViewModel;
 
     public PlaylistsView()
@@ -26,7 +28,7 @@ public partial class PlaylistsView : UserControl
         if (Model?.Selected is { } playlist) EditDetails(playlist);
     }
 
-    private void EditDetails(PlaylistCard? playlist)
+    private void EditDetails(PlaylistCard<BitmapSource>? playlist)
     {
         if (Model is not { CanEdit: true } model || Window.GetWindow(this) is not { } owner) return;
         var editor = new PlaylistEditor(owner, model, playlist);
@@ -51,7 +53,7 @@ public partial class PlaylistsView : UserControl
 
     private void OpenPlaylist(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { DataContext: PlaylistCard card } || Model is not { } model) return;
+        if (sender is not Button { DataContext: PlaylistCard<BitmapSource> card } || Model is not { } model) return;
         CreationFeedback.Visibility = Visibility.Collapsed;
         model.Open(card.Id);
         FocusCurrentView();
