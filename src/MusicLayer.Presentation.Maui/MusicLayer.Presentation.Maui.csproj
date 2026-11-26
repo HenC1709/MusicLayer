@@ -6,13 +6,23 @@
     <SingleProject>true</SingleProject>
     <ApplicationTitle>Tonic</ApplicationTitle>
     <ApplicationId>com.musiclayer.tonic</ApplicationId>
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>1</ApplicationVersion>
-    <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+    <ApplicationDisplayVersion>1.0.3</ApplicationDisplayVersion>
+    <ApplicationVersion>4</ApplicationVersion>
+    <SupportedOSPlatformVersion>33.0</SupportedOSPlatformVersion>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    <UseDefaultPublishRuntimeIdentifier>false</UseDefaultPublishRuntimeIdentifier>
+    <AndroidPackageFormat Condition="'$(Configuration)' == 'Release'">apk</AndroidPackageFormat>
+  </PropertyGroup>
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <AndroidSdkDirectory Condition="'$(AndroidSdkDirectory)' == '' and '$(ANDROID_HOME)' == '' and '$(ANDROID_SDK_ROOT)' == '' and Exists('C:/Android/Sdk/platform-tools/adb.exe')">C:/Android/Sdk</AndroidSdkDirectory>
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == '' and '$(AndroidSdkDirectory)' == 'C:/Android/Sdk' and Exists('C:/Android/jdk/bin/javac.exe')">C:/Android/jdk</JavaSdkDirectory>
   </PropertyGroup>
   <ItemGroup>
-    <MauiIcon Include="Resources\AppIcon\appicon.png" Color="#09232C" />
+    <MauiIcon Include="Resources\AppIcon\Tonic_MAUI.png" Link="appicon.png" Color="#09232C" />
+    <MauiImage Include="Resources\AppIcon\Tonic_MAUI.png" Link="tonic_brand.png" BaseSize="36,36" />
+    <MauiImage Include="Resources\Images\sixteenth-notes.svg" Link="sixteenth_notes.svg" TintColor="#25E8A4" />
+    <MauiImage Include="Resources\Images\search.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\folder-open.svg" Link="folder_open.svg" TintColor="#25E8A4" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <ProjectReference Include="..\MusicLayer.Shared\MusicLayer.Shared.csproj" />
   </ItemGroup>

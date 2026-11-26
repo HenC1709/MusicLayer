@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <application android:label="Tonic" android:icon="@mipmap/appicon" android:allowBackup="false" />
+  <application android:label="Tonic" android:icon="@mipmap/tonic_launcher"
+               android:roundIcon="@mipmap/tonic_launcher" android:allowBackup="false" />
 </manifest>

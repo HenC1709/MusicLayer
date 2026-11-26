@@ -1,5 +1,5 @@
-using MusicLayer.Application.Abstractions;
 using MusicLayer.Shared.Metadata;
+using MusicLayer.Presentation.Maui.Platforms.Android;
 
 namespace MusicLayer.Presentation.Maui;
 
@@ -9,8 +9,8 @@ public static class MauiProgram
     {
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
-        builder.Services.AddSingleton<ITrackMetadataReader, TagLibTrackMetadataReader>();
-        builder.Services.AddSingleton<ICoverArtReader, TagLibCoverArtReader>();
+        builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<LibraryTrackList, LibraryTrackListHandler>());
+        builder.Services.AddSingleton<TagLibTrackMetadataReader>();
         builder.Services.AddTransient<LibraryPage>();
         return builder.Build();
     }

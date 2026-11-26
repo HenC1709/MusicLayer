@@ -1,9 +1,9 @@
 using Android.App;
 using Android.Content.PM;
 
-namespace MusicLayer.Presentation.Maui;
+namespace MusicLayer.Presentation.Maui.Platforms.Android;
 
-[Activity(Theme = "@style/Maui.MainTheme", MainLauncher = true, Exported = true,
+[Activity(Theme = "@style/Maui.MainTheme", Icon = "@mipmap/tonic_launcher", MainLauncher = true, Exported = true,
     LaunchMode = LaunchMode.SingleTop, ConfigurationChanges = ConfigChanges.ScreenSize |
     ConfigChanges.Orientation | ConfigChanges.UiMode | ConfigChanges.ScreenLayout |
     ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]

@@ -63,15 +63,15 @@ dotnet build .\src\MusicLayer.Shared\MusicLayer.Shared.csproj
 
 ### Biblioteca para Android
 
-En Android de 64 bits, versión 7.0 o posterior, abrí **Tonic → Elegir canciones** y seleccioná uno o varios MP3, WAV o FLAC. La selección reemplaza la biblioteca de la sesión. Podés buscar por título, artista o álbum. Si falta el título, se muestra el nombre del archivo. Una nota musical identifica las pistas sin portada legible.
+En Android de 64 bits, versión 13 o posterior, abrí **Tonic → Importar** y seleccioná uno o varios MP3, WAV o FLAC. Una importación exitosa reemplaza el catálogo guardado, que vuelve a aparecer al abrir Tonic. Si cancelás el selector, la biblioteca y la búsqueda activa se conservan. Tocá la lupa para buscar por título, artista o álbum. Si falta el título, se muestra el nombre del archivo. Una nota musical identifica las pistas sin portada legible.
 
 Con el SDK de .NET 10, la carga `maui-android`, el SDK de Android y un JDK compatible, podés generar una APK de prueba desde la raíz del repositorio:
 
 ```powershell
-dotnet build .\src\MusicLayer.Presentation.Maui\MusicLayer.Presentation.Maui.csproj -c Debug
+dotnet build .\src\MusicLayer.Presentation.Maui\MusicLayer.Presentation.Maui.csproj -c Release
 ```
 
-Para instalarla en el teléfono, usá el archivo `com.musiclayer.tonic-Signed.apk` de `bin/Debug/net10.0-android/` del proyecto MAUI. La reproducción y la recuperación de la biblioteca al reiniciar corresponden a las siguientes tareas.
+La APK firmada con compilación nativa AOT se entrega en `artifacts/Android/Tonic.apk` (generada en `bin/Release/net10.0-android/com.musiclayer.tonic-Signed.apk`).
 
 Si instalaste las herramientas en `C:\Android`, añadí `-p:AndroidSdkDirectory=C:/Android/Sdk -p:JavaSdkDirectory=C:/Android/jdk` al comando de compilación.
 

@@ -3,39 +3,91 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:MusicLayer.Presentation.Maui"
              x:Class="MusicLayer.Presentation.Maui.LibraryPage"
-             BackgroundColor="#08171E" Title="Biblioteca" SafeAreaEdges="All">
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Padding="22,16,22,8" RowSpacing="10">
-        <Label Text="♫  Tonic" TextColor="#25D7B1" FontAttributes="Bold" FontSize="18" />
-        <Label Grid.Row="1" Text="Tu biblioteca" FontSize="34" FontAttributes="Bold" TextColor="#F2F8F7"
-               SemanticProperties.HeadingLevel="Level1" />
-        <Button Grid.Row="2" x:Name="ImportButton" Text="Elegir canciones" Clicked="ChooseSongs"
-                BackgroundColor="#25D7B1" TextColor="#08231F" FontAttributes="Bold" CornerRadius="12" />
-        <SearchBar Grid.Row="3" x:Name="Search" Placeholder="Buscar por título, artista o álbum"
-                   TextChanged="SearchChanged" TextColor="#F2F8F7" PlaceholderColor="#A4B8BE"
-                   BackgroundColor="#112830" IsVisible="False" />
-        <Label Grid.Row="4" x:Name="Status" Text="Elegí archivos MP3, WAV o FLAC para verlos aquí."
-               TextColor="#A4B8BE" FontSize="14" />
-        <CollectionView Grid.Row="5" x:Name="TrackList" SelectionMode="None">
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="local:LibraryTrack">
-                    <Grid ColumnDefinitions="52,*,Auto" RowDefinitions="Auto,Auto" Padding="0,7" ColumnSpacing="12">
-                        <Border Grid.RowSpan="2" StrokeThickness="0" StrokeShape="RoundRectangle 9"
-                                BackgroundColor="#16333C" WidthRequest="52" HeightRequest="52">
-                            <Grid>
-                                <Label Text="♫" TextColor="#25D7B1" HorizontalOptions="Center"
-                                       VerticalOptions="Center" FontSize="23" />
-                                <Image Source="{Binding Artwork}" Aspect="AspectFill" />
-                            </Grid>
-                        </Border>
-                        <Label Grid.Column="1" Text="{Binding Row.Song.DisplayName}" FontAttributes="Bold"
-                               VerticalOptions="End" LineBreakMode="TailTruncation" TextColor="#F2F8F7" />
-                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding Artist}" LineBreakMode="TailTruncation"
-                               TextColor="#A4B8BE" FontSize="13" />
-                        <Label Grid.Column="2" Grid.RowSpan="2" Text="{Binding Row.FileFormat}"
-                               VerticalOptions="Center" TextColor="#78CCC0" FontSize="12" />
+             BackgroundColor="#050D10" Title="Biblioteca" SafeAreaEdges="All">
+    <ContentPage.Resources>
+        <Color x:Key="Surface">#0B1D22</Color>
+        <Color x:Key="Outline">#20483F</Color>
+        <Color x:Key="Accent">#25E8A4</Color>
+        <Color x:Key="PrimaryText">#F2F8F7</Color>
+        <Color x:Key="SecondaryText">#9AB9B5</Color>
+        <Style x:Key="Action" TargetType="Button">
+            <Setter Property="MinimumWidthRequest" Value="44" />
+            <Setter Property="MinimumHeightRequest" Value="44" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="HorizontalOptions" Value="Start" />
+            <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
+            <Setter Property="TextColor" Value="#041410" />
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Padding="16,8,16,8" RowSpacing="10">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                <Border WidthRequest="36" HeightRequest="36" Stroke="{StaticResource Outline}"
+                        StrokeShape="RoundRectangle 11" BackgroundColor="#103832">
+                    <Image Source="tonic_brand.png" WidthRequest="34" HeightRequest="34" Aspect="AspectFill" />
+                </Border>
+                <Label Text="Tonic" FontSize="20" FontAttributes="Bold" VerticalOptions="Center"
+                       TextColor="{StaticResource PrimaryText}" />
+            </HorizontalStackLayout>
+            <ImageButton Grid.Column="1" x:Name="SearchToggle" Source="search.png" Clicked="ToggleSearch"
+                         SemanticProperties.Description="Buscar en la biblioteca"
+                         MinimumWidthRequest="44" MinimumHeightRequest="44" Padding="12"
+                         CornerRadius="12" BorderWidth="1" BorderColor="{StaticResource Outline}"
+                         BackgroundColor="{StaticResource Surface}" />
+            <Button Grid.Column="2" x:Name="ImportButton" Text="Importar" Clicked="ChooseSongs"
+                    Style="{StaticResource Action}" ImageSource="folder_open.png" ContentLayout="Left,6"
+                    BackgroundColor="#103832" TextColor="{StaticResource Accent}"
+                    BorderWidth="1" BorderColor="#296454" />
+        </Grid>
+
+        <Border Grid.Row="1" x:Name="SearchPanel" IsVisible="False"
+                BackgroundColor="{StaticResource Surface}" Stroke="{StaticResource Outline}"
+                StrokeShape="RoundRectangle 12" Padding="10,0">
+            <Entry x:Name="Search" TextChanged="SearchChanged" ReturnType="Search"
+                   MinimumWidthRequest="44" MinimumHeightRequest="44" FontSize="15"
+                   Placeholder="Buscar título, artista o álbum" TextColor="{StaticResource PrimaryText}"
+                   PlaceholderColor="{StaticResource SecondaryText}" />
+        </Border>
+
+        <Grid Grid.Row="2" ColumnDefinitions="4,*" ColumnSpacing="12" Margin="0,4,0,2">
+            <Border StrokeThickness="0" StrokeShape="RoundRectangle 2" BackgroundColor="{StaticResource Accent}" />
+            <VerticalStackLayout Grid.Column="1" Spacing="3">
+                <Label Text="Tu biblioteca" FontSize="26" FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryText}" SemanticProperties.HeadingLevel="Level1" />
+                <Label x:Name="LibrarySummary" FontSize="13" TextColor="{StaticResource SecondaryText}" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Border Grid.Row="3" x:Name="StateCard" IsVisible="False" Padding="14"
+                BackgroundColor="{StaticResource Surface}" Stroke="{StaticResource Outline}"
+                StrokeShape="RoundRectangle 16">
+            <Grid ColumnDefinitions="36,*" ColumnSpacing="12">
+                <Border WidthRequest="36" HeightRequest="36" VerticalOptions="Start"
+                        Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 10" BackgroundColor="#103832">
+                    <Grid>
+                        <Image x:Name="StateIcon" Source="folder_open.png" WidthRequest="20" HeightRequest="20" />
+                        <ActivityIndicator x:Name="ImportProgress" IsVisible="False"
+                                           Color="{StaticResource Accent}" WidthRequest="23" HeightRequest="23" />
                     </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                </Border>
+                <VerticalStackLayout Grid.Column="1" Spacing="6">
+                    <Label x:Name="StateTitle" FontSize="16" FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryText}" SemanticProperties.HeadingLevel="Level2" />
+                    <Label x:Name="StateMessage" FontSize="14" TextColor="{StaticResource SecondaryText}" />
+                    <Button x:Name="RetryImport" Style="{StaticResource Action}" Clicked="ChooseSongs" IsVisible="False" />
+                    <Button x:Name="ClearSearch" Style="{StaticResource Action}" Text="Limpiar búsqueda"
+                            Clicked="ClearQuery" IsVisible="False" />
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
+
+        <Label Grid.Row="4" x:Name="ResultCount" IsVisible="False"
+               FontSize="13" TextColor="{StaticResource SecondaryText}" />
+
+        <local:LibraryTrackList Grid.Row="5" x:Name="TrackList" />
     </Grid>
 </ContentPage>

@@ -1,7 +1,7 @@
 using Android.App;
 using Android.Runtime;
 
-namespace MusicLayer.Presentation.Maui;
+namespace MusicLayer.Presentation.Maui.Platforms.Android;
 
 [Application]
 public sealed class MainApplication(nint handle, JniHandleOwnership ownership) : MauiApplication(handle, ownership)

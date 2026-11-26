@@ -28,6 +28,22 @@ public sealed class TagLibTrackMetadataReader : ITrackMetadataReader
     private static TrackMetadata? Read(string filePath, ReadStyle style)
     {
         using var file = TagLib.File.Create(filePath, style);
+        return ReadTags(file);
+    }
+
+    public (TrackMetadata? Metadata, byte[]? Cover) ReadSelection(string fileName, Stream stream)
+    {
+        var input = new StreamFileAbstraction(fileName, stream);
+        TagLib.File file;
+        try { file = TagLib.File.Create(input, ReadStyle.Average); }
+        catch (CorruptFileException) { file = TagLib.File.Create(input, ReadStyle.None); }
+
+        using (file)
+            return (ReadTags(file), TagLibCoverArtReader.ReadPicture(file));
+    }
+
+    private static TrackMetadata? ReadTags(TagLib.File file)
+    {
         var title = Normalize(file.Tag.Title);
         var artist = Normalize(file.Tag.JoinedPerformers);
         var album = Normalize(file.Tag.Album);
@@ -45,4 +61,21 @@ public sealed class TagLibTrackMetadataReader : ITrackMetadataReader
     }
 
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed class StreamFileAbstraction(string name, Stream stream) : TagLib.File.IFileAbstraction
+    {
+        public string Name { get; } = name;
+        public Stream ReadStream
+        {
+            get
+            {
+                stream.Position = 0;
+                return stream;
+            }
+        }
+        public Stream WriteStream => throw new NotSupportedException();
+
+        // TagLib can reopen the stream. The importer owns it and disposes it after reading.
+        public void CloseStream(Stream stream) { }
+    }
 }

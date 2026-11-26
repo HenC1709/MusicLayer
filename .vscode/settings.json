@@ -1,3 +1,46 @@
 {
-    "dotnet.defaultSolution": "MusicLayer.sln"
+    "dotnet.defaultSolution": "MusicLayer.sln",
+    "files.exclude": {
+        "**/obj": true,
+        "**/bin": true
+    },
+    "java.jdt.ls.java.home": "C:/Android/jdk",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-17",
+            "path": "C:/Android/jdk",
+            "default": true
+        }
+    ],
+    "java.project.sourcePaths": [
+        "src/MusicLayer.Presentation.Maui/obj/Debug/net10.0-android/android/src"
+    ],
+    "java.project.outputPath": "src/MusicLayer.Presentation.Maui/obj/Debug/net10.0-android/jdtls-classes",
+    "java.project.resourceFilters": [
+        "node_modules",
+        "\\.git",
+        "bin",
+        "Release",
+        "jdtls-classes"
+    ],
+    "java.project.referencedLibraries": [
+        "C:/Android/Sdk/platforms/android-36/android.jar",
+        "C:/Program Files/dotnet/packs/Microsoft.Android.Sdk.Windows/36.1.2/tools/java_runtime_net6.jar",
+        "src/MusicLayer.Presentation.Maui/obj/Debug/net10.0-android/android/bin/mono.android.jar",
+        "src/MusicLayer.Presentation.Maui/obj/Debug/net10.0-android/lp/**/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.annotation/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.annotation.jvm/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.arch.core.common/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.collection/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.collection.jvm/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.collection.ktx/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.concurrent.futures/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.constraintlayout.core/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.lifecycle.common/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.lifecycle.common.jvm/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.resourceinspection.annotation/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.window.windowcore/*/jar/*.jar",
+        "C:/Users/HP VICTUS/.nuget/packages/xamarin.androidx.window.windowcore.jvm/*/jar/*.jar"
+    ],
+    "java.settings.url": ".vscode/jdt.prefs"
 }

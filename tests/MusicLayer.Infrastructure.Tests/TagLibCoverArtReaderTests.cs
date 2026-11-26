@@ -38,7 +38,43 @@ public sealed class TagLibCoverArtReaderTests
             Assert.Equal(back.Data.Data, reader.ReadEmbeddedCover(path));
             SavePictures(back, front);
             Assert.Equal(front.Data.Data, reader.ReadEmbeddedCover(path));
+
+            using var selectedFile = new MemoryStream(File.ReadAllBytes(path), writable: false);
+            var selection = new TagLibTrackMetadataReader().ReadSelection("Selección" + extension, selectedFile);
+            Assert.Equal(front.Data.Data, selection.Cover);
+            Assert.True(selectedFile.CanRead);
+
             using var exclusive = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(".flac")]
+    [InlineData(".mp3")]
+    [InlineData(".wav")]
+    public void ReadsSelectedTrackTagsWithoutAFilePathOrCover(string extension)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
+        try
+        {
+            AudioFixture.Create(path);
+            using (var tagged = TagLib.File.Create(path))
+            {
+                tagged.Tag.Title = "Título";
+                tagged.Tag.Performers = ["Artista"];
+                tagged.Tag.Album = "Álbum";
+                tagged.Save();
+            }
+
+            using var selectedFile = new MemoryStream(File.ReadAllBytes(path), writable: false);
+            var selection = new TagLibTrackMetadataReader().ReadSelection("Selección" + extension, selectedFile);
+
+            Assert.NotNull(selection.Metadata);
+            Assert.Equal("Título", selection.Metadata.Title);
+            Assert.Equal("Artista", selection.Metadata.Artist);
+            Assert.Equal("Álbum", selection.Metadata.Album);
+            Assert.Null(selection.Cover);
         }
         finally { File.Delete(path); }
     }
