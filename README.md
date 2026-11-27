@@ -65,6 +65,8 @@ dotnet build .\src\MusicLayer.Shared\MusicLayer.Shared.csproj
 
 En Android de 64 bits, versión 13 o posterior, abrí **Tonic → Importar** y seleccioná uno o varios MP3, WAV o FLAC. Una importación exitosa reemplaza el catálogo guardado, que vuelve a aparecer al abrir Tonic. Si cancelás el selector, la biblioteca y la búsqueda activa se conservan. Tocá la lupa para buscar por título, artista o álbum. Si falta el título, se muestra el nombre del archivo. Una nota musical identifica las pistas sin portada legible.
 
+Tocá una pista de la Biblioteca para reproducirla. La pestaña **Reproducir** muestra la posición, el transporte y la cola. Las canciones importadas antes de la versión 1.0.6 deben seleccionarse otra vez para autorizar el acceso al audio. Tonic usa los archivos originales en su ubicación y guarda el permiso concedido por el selector.
+
 Con el SDK de .NET 10, la carga `maui-android`, el SDK de Android y un JDK compatible, podés generar una APK de prueba desde la raíz del repositorio:
 
 ```powershell

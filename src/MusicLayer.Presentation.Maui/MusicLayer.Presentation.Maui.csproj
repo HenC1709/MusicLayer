@@ -6,8 +6,8 @@
     <SingleProject>true</SingleProject>
     <ApplicationTitle>Tonic</ApplicationTitle>
     <ApplicationId>com.musiclayer.tonic</ApplicationId>
-    <ApplicationDisplayVersion>1.0.3</ApplicationDisplayVersion>
-    <ApplicationVersion>4</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.8</ApplicationDisplayVersion>
+    <ApplicationVersion>9</ApplicationVersion>
     <SupportedOSPlatformVersion>33.0</SupportedOSPlatformVersion>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <UseDefaultPublishRuntimeIdentifier>false</UseDefaultPublishRuntimeIdentifier>
@@ -18,11 +18,22 @@
     <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == '' and '$(AndroidSdkDirectory)' == 'C:/Android/Sdk' and Exists('C:/Android/jdk/bin/javac.exe')">C:/Android/jdk</JavaSdkDirectory>
   </PropertyGroup>
   <ItemGroup>
-    <MauiIcon Include="Resources\AppIcon\Tonic_MAUI.png" Link="appicon.png" Color="#09232C" />
-    <MauiImage Include="Resources\AppIcon\Tonic_MAUI.png" Link="tonic_brand.png" BaseSize="36,36" />
     <MauiImage Include="Resources\Images\sixteenth-notes.svg" Link="sixteenth_notes.svg" TintColor="#25E8A4" />
     <MauiImage Include="Resources\Images\search.svg" TintColor="#9AB9B5" />
     <MauiImage Include="Resources\Images\folder-open.svg" Link="folder_open.svg" TintColor="#25E8A4" />
+    <MauiImage Include="Resources\Images\menu.svg" TintColor="#F2F8F7" />
+    <MauiImage Include="Resources\Images\play.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\audio-lines.svg" Link="audio_lines.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\list-music.svg" Link="list_music.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\settings.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\play.svg" Link="transport_play.svg" TintColor="#041410" />
+    <MauiImage Include="Resources\Images\circle-pause.svg" Link="transport_pause.svg" TintColor="#041410" />
+    <MauiImage Include="Resources\Images\circle-chevron-left.svg" Link="circle_chevron_left.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\circle-chevron-right.svg" Link="circle_chevron_right.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\shuffle.svg" TintColor="#9AB9B5" />
+    <MauiImage Include="Resources\Images\repeat.svg" TintColor="#25E8A4" />
+    <MauiImage Include="Resources\Images\repeat-1.svg" Link="repeat_one.svg" TintColor="#25E8A4" />
+    <MauiImage Include="Resources\Images\repeat-off.svg" Link="repeat_off.svg" TintColor="#9AB9B5" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <ProjectReference Include="..\MusicLayer.Shared\MusicLayer.Shared.csproj" />
   </ItemGroup>

@@ -68,17 +68,17 @@
                                            ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" FontSize="19"
                                            Foreground="{StaticResource Muted}" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
                                 <TextBlock Text="{Binding CoverSong.Metadata.Album, TargetNullValue='', FallbackValue=''}"
-                                           ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Style="{StaticResource OptionalMetadata}" />
+                                           ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" Style="{StaticResource OptionalMetadata}" />      
                                 <WrapPanel Margin="0,4,0,0">
                                     <TextBlock Text="{Binding CoverSong.FileFormat, FallbackValue=''}" Margin="0,0,8,0"
                                                Foreground="{StaticResource Mint}" FontSize="12" FontWeight="SemiBold" Style="{StaticResource OptionalMetadata}" />
                                     <TextBlock Text="{Binding CoverAudioDetails}" Foreground="{StaticResource Muted}" FontSize="12" Style="{StaticResource OptionalMetadata}" />
-                                </WrapPanel>
+                                     </WrapPanel>
                                 <WrapPanel x:Name="Actions" Margin="0,14,0,0">
                                     <Button x:Name="PrimaryAction" Content="{Binding TransportLabel}" Click="TogglePlayback" IsEnabled="{Binding CanTogglePlayback}" MinHeight="40"
                                             Background="{StaticResource Mint}" Foreground="#092A26" FontWeight="Bold" Margin="0,0,6,4" />
                                     <ToggleButton x:Name="FavoriteAction" IsChecked="{Binding CoverRow.IsFavorite, Mode=TwoWay, FallbackValue=False}"
-                                                  AutomationProperties.Name="Favorita" Margin="0,0,6,4">
+                                    AutomationProperties.Name="Favorita" Margin="0,0,6,4">
                                         <ToggleButton.Style>
                                             <Style TargetType="ToggleButton" BasedOn="{StaticResource FavoriteToggle}">
                                                 <Style.Triggers>
@@ -90,8 +90,16 @@
                                         </ToggleButton.Style>
                                     </ToggleButton>
                                     <Button x:Name="MoreActions" Style="{StaticResource LibraryButton}" Width="40" MinHeight="40" Padding="0"
-                                            IsEnabled="False" AutomationProperties.Name="Más opciones"
-                                            ToolTip="Más opciones próximamente" ToolTipService.ShowOnDisabled="True" Margin="0,0,6,4">
+                                            Click="OpenMoreOptions" AutomationProperties.Name="Más opciones"
+                                            ToolTip="Más opciones" Margin="0,0,6,4">
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Abrir ubicación del archivo" Click="OpenFileLocation" />
+                                                <MenuItem Header="Copiar ruta del archivo" Click="CopyFilePath" />
+                                                <Separator />
+                                                <MenuItem Header="Abrir letras (.lrc)" Click="OpenLyrics" />
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
                                         <TextBlock Text="&#xE712;" Style="{StaticResource Glyph}" />
                                     </Button>
                                     <Button Click="OpenLyrics" MinHeight="40" AutomationProperties.Name="Abrir Letras"

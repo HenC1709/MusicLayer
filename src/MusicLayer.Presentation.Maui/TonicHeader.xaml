@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MusicLayer.Presentation.Maui.TonicHeader">
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+        <ImageButton Source="menu.png" Clicked="OpenMenu" SemanticProperties.Description="Abrir menú"
+                     WidthRequest="44" HeightRequest="44" Padding="11"
+                     CornerRadius="12" BorderWidth="1" BorderColor="#20483F" BackgroundColor="#0B1D22" />
+        <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="7" VerticalOptions="Center">
+            <Border WidthRequest="32" HeightRequest="32" Stroke="#20483F"
+                    StrokeShape="RoundRectangle 9" BackgroundColor="#103832">
+                <Image Source="tonic_desktop.png" Aspect="AspectFit" Margin="2" />
+            </Border>
+            <Label Grid.Column="1" Text="Tonic" Style="{DynamicResource TonicWordmark}" />
+        </Grid>
+        <ImageButton Grid.Column="2" x:Name="SearchAction" Source="search.png" Clicked="OnSearch"
+                     SemanticProperties.Description="Buscar en la biblioteca" IsVisible="False"
+                     WidthRequest="44" HeightRequest="44" Padding="12"
+                     CornerRadius="12" BorderWidth="1" BorderColor="#20483F" BackgroundColor="#0B1D22" />
+        <Button Grid.Column="3" x:Name="ImportAction" Text="Importar" Clicked="OnImport" IsVisible="False"
+                MinimumWidthRequest="44" MinimumHeightRequest="44" Padding="8,0" FontSize="14"
+                FontAttributes="Bold" CornerRadius="12" ImageSource="folder_open.png" ContentLayout="Left,5"
+                BackgroundColor="#103832" TextColor="#25E8A4" BorderWidth="1" BorderColor="#296454" />
+    </Grid>
+</ContentView>

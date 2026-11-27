@@ -7,10 +7,11 @@ using MusicLayer.Shared.ViewModels;
 
 namespace MusicLayer.Presentation.Maui;
 
-public sealed record LibraryTrack(SongRow Row, string? ArtworkPath)
+public sealed record LibraryTrack(SongRow Row, string? ArtworkPath, string? ContentUri = null)
 {
     public string Title { get; } = Row.Song.DisplayName;
     public string Format { get; } = Row.FileFormat;
+    public string Duration { get; } = Row.DurationText;
     public string Credits { get; } =
         $"{Row.Song.Metadata?.Artist ?? "Artista desconocido"} · {Row.Song.Metadata?.Album ?? "Álbum desconocido"}";
     public string AccessibilityLabel { get; } =
@@ -19,35 +20,58 @@ public sealed record LibraryTrack(SongRow Row, string? ArtworkPath)
     internal int CachedTextWidth { get; set; } = -1;
     internal string CachedTitle { get; set; } = "";
     internal string CachedCredits { get; set; } = "";
-    internal float CachedFormatWidth { get; set; } = -1f;
+    internal float CachedDurationWidth { get; set; } = -1f;
 }
 
 public partial class LibraryPage : ContentPage
 {
+    private static readonly string[] SortValues = ["Título", "Artista", "Álbum", "Duración", "Orden de carpeta"];
     private readonly TagLibTrackMetadataReader metadata;
+    private readonly AndroidPlayback playback;
     private readonly LibraryBrowser library = new();
     private readonly LibraryCatalogStore catalog = new(Path.Combine(FileSystem.AppDataDirectory, "library.json"));
     private IReadOnlyList<LibraryTrack> tracks = [];
-    private bool catalogLoaded;
+    private Task? catalogLoad;
+    private bool catalogAvailable;
+    private bool updatingGroups;
+    private int stateVersion;
 
-    public LibraryPage(TagLibTrackMetadataReader metadata)
+    internal event EventHandler? PlaybackRequested;
+
+    public LibraryPage(TagLibTrackMetadataReader metadata, AndroidPlayback playback)
     {
         InitializeComponent();
         this.metadata = metadata;
+        this.playback = playback;
+        MiniPlayer.Connect(playback);
+        SortPicker.ItemsSource = new[] { "Título", "Artista", "Álbum", "Duración", "Importación" };
+        SortPicker.SelectedIndex = 0;
+        UpdateFilters();
     }
 
-    protected override async void OnAppearing()
+    protected override void OnAppearing()
     {
         base.OnAppearing();
-        if (catalogLoaded) return;
+        playback.Changed += UpdatePlayback;
+        UpdatePlayback(this, EventArgs.Empty);
+        _ = catalogLoad ??= RestoreCatalogAsync();
+    }
 
-        catalogLoaded = true;
+    protected override void OnDisappearing()
+    {
+        playback.Changed -= UpdatePlayback;
+        base.OnDisappearing();
+    }
+
+    private async Task RestoreCatalogAsync()
+    {
         SetControlsEnabled(false);
         SetState("Recuperando biblioteca…", loading: true);
         try
         {
             var saved = await Task.Run(async () => CreateTracks(await catalog.LoadAsync()));
             ReplaceTracks(saved);
+            catalogAvailable = true;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -57,25 +81,24 @@ public partial class LibraryPage : ContentPage
         finally { SetControlsEnabled(true); }
     }
 
-    private async void ChooseSongs(object? sender, EventArgs e)
+    private async void ChooseSongs(object? sender, EventArgs e) => await ImportSongsAsync();
+
+    internal async Task ImportSongsAsync()
     {
-        if (!ImportButton.IsEnabled) return;
+        await (catalogLoad ??= RestoreCatalogAsync());
+        if (!RetryImport.IsEnabled) return;
         SetControlsEnabled(false);
+        bool selectionRead = false;
         try
         {
-            var selection = await FilePicker.Default.PickMultipleAsync(new PickOptions
-            {
-                PickerTitle = "Elegir canciones",
-                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-                {
-                    [DevicePlatform.Android] = ["audio/*", "application/flac", "application/x-flac"]
-                })
-            });
-            var files = selection?.OfType<FileResult>().ToArray();
+            var activity = Platform.CurrentActivity as MainActivity
+                ?? throw new IOException("El selector necesita una ventana activa.");
+            var files = await activity.PickAudioAsync();
             if (files is not { Length: > 0 }) return;
 
             string reading = files.Length == 1 ? "Leyendo 1 archivo." : $"Leyendo {files.Length} archivos.";
             SetState("Importando canciones…", reading, loading: true);
+            selectionRead = true;
             var imported = await Task.Run(() => ReadTracksAsync(files));
             if (imported.Count == 0)
             {
@@ -94,12 +117,18 @@ public partial class LibraryPage : ContentPage
             }
 
             ReplaceTracks(prepared);
+            catalogAvailable = true;
             int skipped = files.Length - tracks.Count;
             string summary = $"{library.ResultCount} en tu biblioteca.";
             if (skipped > 0)
                 summary += skipped == 1 ? " No se pudo importar 1 archivo." : $" No se pudieron importar {skipped} archivos.";
 
             SetState("Importación completada", summary);
+            int successState = stateVersion;
+            Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(4), () =>
+            {
+                if (stateVersion == successState) SetState(null);
+            });
         }
         catch (OperationCanceledException)
         {
@@ -111,23 +140,30 @@ public partial class LibraryPage : ContentPage
             SetState("No se pudo abrir la selección", "Volvé a elegir los archivos.",
                 error: true, importAction: "Reintentar");
         }
-        finally { SetControlsEnabled(true); }
+        finally
+        {
+            SetControlsEnabled(true);
+            if (catalogAvailable && selectionRead)
+                AudioDocuments.KeepOnly(tracks.Select(track => track.ContentUri).Concat(playback.Queue.Select(track => track.ContentUri)));
+        }
     }
 
-    private async Task<List<LibraryCatalogTrack>> ReadTracksAsync(FileResult[] files)
+    private async Task<List<LibraryCatalogTrack>> ReadTracksAsync(string[] files)
     {
         List<LibraryCatalogTrack> result = [];
 
         foreach (var file in files)
         {
-            string name = Path.GetFileName(file.FileName);
-            if (Path.GetExtension(name).ToLowerInvariant() is not (".mp3" or ".wav" or ".flac")) continue;
-
             try
             {
-                await using var source = await file.OpenReadAsync();
-                var tags = await ReadTagsAsync(name, source);
-                result.Add(new LibraryCatalogTrack(name, tags.Metadata, CoverThumbnail.Save(tags.Cover)));
+                using var uri = global::Android.Net.Uri.Parse(file);
+                if (uri is null) continue;
+                string name = AudioDocuments.GetName(uri);
+                if (Path.GetExtension(name).ToLowerInvariant() is not (".mp3" or ".wav" or ".flac")) continue;
+                await using var source = AudioDocuments.Open(uri);
+                var tags = await AudioDocuments.ReadSeekableAsync(source, stream => metadata.ReadSelection(name, stream));
+                AudioDocuments.Keep(uri);
+                result.Add(new LibraryCatalogTrack(name, tags.Metadata, CoverThumbnail.Save(tags.Cover)) { ContentUri = file });
             }
             catch (Exception error) when (error is TagLib.CorruptFileException or TagLib.UnsupportedFormatException
                                           or IOException or UnauthorizedAccessException or PermissionException
@@ -146,7 +182,7 @@ public partial class LibraryPage : ContentPage
         {
             // Song derives its display name and format from a path. This catalog key does not point to audio.
             string key = Path.Combine(FileSystem.AppDataDirectory, "catalog", index.ToString(), Path.GetFileName(item.FileName));
-            return new LibraryTrack(new SongRow(new Song(key, item.Metadata), index), CoverThumbnail.GetPath(item.CoverFileName));
+            return new LibraryTrack(new SongRow(new Song(key, item.Metadata), index), CoverThumbnail.GetPath(item.CoverFileName), item.ContentUri);
         }).ToArray();
         foreach (var path in tracks.Select(t => t.ArtworkPath).OfType<string>().Distinct().Take(LibraryCoverCache.Capacity))
             LibraryCoverCache.Load(path);
@@ -157,38 +193,16 @@ public partial class LibraryPage : ContentPage
     {
         tracks = updated;
         library.ReplaceRows(tracks.Select(track => track.Row).ToArray());
+        UpdateFilters();
         if (!string.IsNullOrEmpty(Search.Text)) Search.Text = "";
         else RefreshResults();
     }
 
     private void SetControlsEnabled(bool enabled)
     {
-        ImportButton.IsEnabled = RetryImport.IsEnabled = enabled;
-        SearchToggle.IsEnabled = Search.IsEnabled = ClearSearch.IsEnabled = enabled;
-    }
-
-    private async Task<(TrackMetadata? Metadata, byte[]? Cover)> ReadTagsAsync(string name, Stream source)
-    {
-        if (SupportsRandomAccess(source)) return metadata.ReadSelection(name, source);
-
-        // Some document providers return pipes. TagLib needs a seekable stream.
-        string temporaryPath = Path.Combine(FileSystem.CacheDirectory, $"audio-{Guid.NewGuid():N}.tmp");
-        await using var temporary = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.ReadWrite,
-            FileShare.None, 64 * 1024, FileOptions.Asynchronous | FileOptions.DeleteOnClose);
-        await source.CopyToAsync(temporary);
-        return metadata.ReadSelection(name, temporary);
-    }
-
-    private static bool SupportsRandomAccess(Stream stream)
-    {
-        if (!stream.CanSeek) return false;
-
-        try
-        {
-            _ = stream.Length;
-            return true;
-        }
-        catch (NotSupportedException) { return false; }
+        Header.SetLibraryActionsEnabled(enabled);
+        RetryImport.IsEnabled = Search.IsEnabled = ClearSearch.IsEnabled = enabled;
+        LibraryTools.IsEnabled = enabled;
     }
 
     private void ToggleSearch(object? sender, EventArgs e)
@@ -205,6 +219,72 @@ public partial class LibraryPage : ContentPage
 
     private void ClearQuery(object? sender, EventArgs e) => Search.Text = "";
 
+    private void SelectSection(object? sender, EventArgs e)
+    {
+        if (sender is not Button { Text: { } section } || section == library.Section) return;
+        library.Section = section;
+        UpdateFilters();
+        RefreshResults();
+    }
+
+    private void UpdateFilters()
+    {
+        foreach (var button in new[] { SongsFilter, ArtistsFilter, AlbumsFilter, GenresFilter })
+        {
+            bool selected = button.Text == library.Section;
+            button.BackgroundColor = Color.FromArgb(selected ? "#25E8A4" : "#0B1D22");
+            button.TextColor = Color.FromArgb(selected ? "#041410" : "#9AB9B5");
+            SemanticProperties.SetDescription(button, selected ? $"{button.Text}, seleccionado" : button.Text);
+        }
+
+        GroupBox.IsVisible = library.IsGrouped && library.Groups.Count > 0;
+        updatingGroups = true;
+        GroupPicker.ItemsSource = new[] { "Todos" }.Concat(library.Groups).ToArray();
+        GroupPicker.SelectedIndex = 0;
+        updatingGroups = false;
+    }
+
+    private void SelectGroup(object? sender, EventArgs e)
+    {
+        if (updatingGroups) return;
+        int index = GroupPicker.SelectedIndex;
+        library.Group = index > 0 && index <= library.Groups.Count ? library.Groups[index - 1] : null;
+        RefreshResults();
+    }
+
+    private void SelectSort(object? sender, EventArgs e)
+    {
+        int index = SortPicker.SelectedIndex;
+        if ((uint)index >= (uint)SortValues.Length || library.SortOrder == SortValues[index]) return;
+        library.SortOrder = SortValues[index];
+        RefreshResults();
+    }
+
+    private void PlayAll(object? sender, EventArgs e)
+    {
+        var available = TrackList.Items.Where(track => track.ContentUri is not null).ToArray();
+        if (available.Length == 0) return;
+        int index = playback.Shuffle ? Random.Shared.Next(available.Length) : 0;
+        PlayTrack(this, available[index]);
+    }
+
+    private void ToggleShuffle(object? sender, EventArgs e) => playback.ToggleShuffle();
+
+    private void UpdatePlayback(object? sender, EventArgs e)
+    {
+        TrackList.ActiveTrack = playback.Current;
+        ShuffleButton.BackgroundColor = Color.FromArgb(playback.Shuffle ? "#14564A" : "#0B1D22");
+        SemanticProperties.SetDescription(ShuffleButton, playback.Shuffle ? "Modo aleatorio activado" : "Modo aleatorio desactivado");
+    }
+
+    private void PlayTrack(object? sender, LibraryTrack track)
+    {
+        playback.Play(TrackList.Items, track);
+        PlaybackRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OpenPlayback(object? sender, EventArgs e) => PlaybackRequested?.Invoke(this, e);
+
     private void SearchChanged(object? sender, TextChangedEventArgs e)
     {
         library.SearchText = e.NewTextValue ?? "";
@@ -215,9 +295,11 @@ public partial class LibraryPage : ContentPage
     {
         LibrarySummary.Text = library.Summary;
         TrackList.Items = library.Rows.Select(row => tracks[row.Index]).ToArray();
+        LibraryTools.IsVisible = tracks.Count > 0;
+        PlayAllButton.IsEnabled = TrackList.Items.Any(track => track.ContentUri is not null);
 
-        bool searching = !string.IsNullOrWhiteSpace(library.SearchText);
-        ResultCount.IsVisible = searching && library.HasResults;
+        bool filtered = library.Group is not null || !string.IsNullOrWhiteSpace(library.SearchText);
+        ResultCount.IsVisible = filtered && library.HasResults;
         ResultCount.Text = library.ResultCount;
         if (tracks.Count == 0)
             SetState("Tu biblioteca está vacía", "Importá canciones en MP3, WAV o FLAC para empezar.",
@@ -231,6 +313,7 @@ public partial class LibraryPage : ContentPage
     private void SetState(string? title, string? message = null, bool loading = false, bool error = false,
         string? importAction = null, bool canClearSearch = false)
     {
+        stateVersion++;
         StateCard.IsVisible = title is not null;
         StateTitle.Text = title;
         StateMessage.Text = message;

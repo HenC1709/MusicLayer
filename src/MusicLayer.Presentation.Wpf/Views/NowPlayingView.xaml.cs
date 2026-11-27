@@ -110,4 +110,27 @@ public partial class NowPlayingView : UserControl
         if (sender is Image { IsLoaded: true } image) RefreshThumbnail(image);
     }
     private void RefreshThumbnail(Image image) => thumbnails.Refresh(image, Model, (ImageSource)Resources["LibraryArtwork"]);
+
+    private void OpenMoreOptions(object sender, RoutedEventArgs e)
+    {
+        if (MoreActions.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = MoreActions;
+            menu.IsOpen = true;
+        }
+    }
+
+    private void OpenFileLocation(object sender, RoutedEventArgs e)
+    {
+        var path = Model?.CoverSong?.FilePath;
+        if (!string.IsNullOrWhiteSpace(path) && System.IO.File.Exists(path))
+            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+    }
+
+    private void CopyFilePath(object sender, RoutedEventArgs e)
+    {
+        var path = Model?.CoverSong?.FilePath;
+        if (!string.IsNullOrWhiteSpace(path))
+            Clipboard.SetText(path);
+    }
 }

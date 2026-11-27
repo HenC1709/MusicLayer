@@ -21,29 +21,22 @@
             <Setter Property="BackgroundColor" Value="{StaticResource Accent}" />
             <Setter Property="TextColor" Value="#041410" />
         </Style>
+        <Style x:Key="FilterChip" TargetType="Button">
+            <Setter Property="MinimumHeightRequest" Value="44" />
+            <Setter Property="MinimumWidthRequest" Value="44" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="BorderWidth" Value="1" />
+            <Setter Property="BorderColor" Value="{StaticResource Outline}" />
+            <Setter Property="TextColor" Value="{StaticResource SecondaryText}" />
+            <Setter Property="BackgroundColor" Value="{StaticResource Surface}" />
+        </Style>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" Padding="16,8,16,8" RowSpacing="10">
-        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
-                <Border WidthRequest="36" HeightRequest="36" Stroke="{StaticResource Outline}"
-                        StrokeShape="RoundRectangle 11" BackgroundColor="#103832">
-                    <Image Source="tonic_brand.png" WidthRequest="34" HeightRequest="34" Aspect="AspectFill" />
-                </Border>
-                <Label Text="Tonic" FontSize="20" FontAttributes="Bold" VerticalOptions="Center"
-                       TextColor="{StaticResource PrimaryText}" />
-            </HorizontalStackLayout>
-            <ImageButton Grid.Column="1" x:Name="SearchToggle" Source="search.png" Clicked="ToggleSearch"
-                         SemanticProperties.Description="Buscar en la biblioteca"
-                         MinimumWidthRequest="44" MinimumHeightRequest="44" Padding="12"
-                         CornerRadius="12" BorderWidth="1" BorderColor="{StaticResource Outline}"
-                         BackgroundColor="{StaticResource Surface}" />
-            <Button Grid.Column="2" x:Name="ImportButton" Text="Importar" Clicked="ChooseSongs"
-                    Style="{StaticResource Action}" ImageSource="folder_open.png" ContentLayout="Left,6"
-                    BackgroundColor="#103832" TextColor="{StaticResource Accent}"
-                    BorderWidth="1" BorderColor="#296454" />
-        </Grid>
-
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Padding="16,8,16,8" RowSpacing="8">
+        <local:TonicHeader x:Name="Header" ShowLibraryActions="True"
+                           SearchRequested="ToggleSearch" ImportRequested="ChooseSongs" />
         <Border Grid.Row="1" x:Name="SearchPanel" IsVisible="False"
                 BackgroundColor="{StaticResource Surface}" Stroke="{StaticResource Outline}"
                 StrokeShape="RoundRectangle 12" Padding="10,0">
@@ -62,7 +55,38 @@
             </VerticalStackLayout>
         </Grid>
 
-        <Border Grid.Row="3" x:Name="StateCard" IsVisible="False" Padding="14"
+        <VerticalStackLayout Grid.Row="3" x:Name="LibraryTools" IsVisible="False" Spacing="8">
+            <ScrollView Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                <HorizontalStackLayout Spacing="6">
+                    <Button x:Name="SongsFilter" Text="Canciones" Clicked="SelectSection" Style="{StaticResource FilterChip}" />
+                    <Button x:Name="ArtistsFilter" Text="Artistas" Clicked="SelectSection" Style="{StaticResource FilterChip}" />
+                    <Button x:Name="AlbumsFilter" Text="Álbumes" Clicked="SelectSection" Style="{StaticResource FilterChip}" />
+                    <Button x:Name="GenresFilter" Text="Géneros" Clicked="SelectSection" Style="{StaticResource FilterChip}" />
+                </HorizontalStackLayout>
+            </ScrollView>
+            <Border x:Name="GroupBox" IsVisible="False" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 10"
+                    BackgroundColor="{StaticResource Surface}" Padding="8,0">
+                <Picker x:Name="GroupPicker" MinimumHeightRequest="44" TextColor="{StaticResource PrimaryText}"
+                        TitleColor="{StaticResource SecondaryText}" SelectedIndexChanged="SelectGroup"
+                        SemanticProperties.Description="Seleccionar grupo" />
+            </Border>
+            <Grid ColumnDefinitions="Auto,44,*" ColumnSpacing="6">
+                <Button x:Name="PlayAllButton" Text="Reproducir todo" ImageSource="play.png" ContentLayout="Left,4"
+                        Clicked="PlayAll" Style="{StaticResource Action}" Padding="8,0" FontSize="12"
+                        BackgroundColor="#103832" TextColor="{StaticResource PrimaryText}" BorderWidth="1" BorderColor="#296454" />
+                <ImageButton Grid.Column="1" x:Name="ShuffleButton" Source="shuffle.png" Clicked="ToggleShuffle"
+                             WidthRequest="44" HeightRequest="44" Padding="10" CornerRadius="10"
+                             BorderWidth="1" BorderColor="{StaticResource Outline}" BackgroundColor="{StaticResource Surface}" />
+                <Border Grid.Column="2" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 10"
+                        BackgroundColor="{StaticResource Surface}" Padding="6,0">
+                    <Picker x:Name="SortPicker" MinimumHeightRequest="44" TextColor="{StaticResource SecondaryText}"
+                            TitleColor="{StaticResource SecondaryText}" FontSize="12" SelectedIndexChanged="SelectSort"
+                            SemanticProperties.Description="Orden de la biblioteca" />
+                </Border>
+            </Grid>
+        </VerticalStackLayout>
+
+        <Border Grid.Row="4" x:Name="StateCard" IsVisible="False" Padding="14"
                 BackgroundColor="{StaticResource Surface}" Stroke="{StaticResource Outline}"
                 StrokeShape="RoundRectangle 16">
             <Grid ColumnDefinitions="36,*" ColumnSpacing="12">
@@ -85,9 +109,12 @@
             </Grid>
         </Border>
 
-        <Label Grid.Row="4" x:Name="ResultCount" IsVisible="False"
+        <Label Grid.Row="5" x:Name="ResultCount" IsVisible="False"
                FontSize="13" TextColor="{StaticResource SecondaryText}" />
 
-        <local:LibraryTrackList Grid.Row="5" x:Name="TrackList" />
+        <Grid Grid.Row="6" IsClippedToBounds="True">
+            <local:LibraryTrackList x:Name="TrackList" TrackTapped="PlayTrack" />
+        </Grid>
+        <local:MiniPlayer Grid.Row="7" x:Name="MiniPlayer" OpenRequested="OpenPlayback" />
     </Grid>
 </ContentPage>

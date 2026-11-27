@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="tonic_window_background">#050D10</color>
+    <style name="Tonic.MainTheme" parent="Maui.MainTheme.NoActionBar">
+        <item name="android:windowBackground">@color/tonic_window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="maui_edgetoedge_optout">false</item>
+    </style>
+</resources>

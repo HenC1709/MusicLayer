@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       x:Class="MusicLayer.Presentation.Maui.AppShell"
+       FlyoutBehavior="Flyout" FlyoutWidth="288" FlyoutBackgroundColor="#081519"
+       FlyoutBackdrop="#99050D10" Shell.NavBarIsVisible="False"
+       Shell.TabBarBackgroundColor="#0B1D22" Shell.TabBarForegroundColor="#25E8A4"
+       Shell.TabBarTitleColor="#25E8A4" Shell.TabBarUnselectedColor="#9AB9B5" />

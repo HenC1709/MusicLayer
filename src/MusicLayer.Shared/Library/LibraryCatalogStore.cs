@@ -3,7 +3,10 @@ using MusicLayer.Domain.Entities;
 
 namespace MusicLayer.Shared.Library;
 
-public sealed record LibraryCatalogTrack(string FileName, TrackMetadata? Metadata, string? CoverFileName);
+public sealed record LibraryCatalogTrack(string FileName, TrackMetadata? Metadata, string? CoverFileName)
+{
+    public string? ContentUri { get; init; }
+}
 
 public sealed class LibraryCatalogStore(string filePath)
 {

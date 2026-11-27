@@ -21,14 +21,23 @@ internal sealed class LibraryTrackListHandler() : ViewHandler<LibraryTrackList, 
     private static readonly IPropertyMapper<LibraryTrackList, LibraryTrackListHandler> ListMapper =
         new PropertyMapper<LibraryTrackList, LibraryTrackListHandler>(ViewMapper)
         {
-            [nameof(LibraryTrackList.Items)] = (handler, view) => handler.PlatformView.SetItems(view.Items)
+            [nameof(LibraryTrackList.Items)] = (handler, view) => handler.PlatformView.SetItems(view.Items),
+            [nameof(LibraryTrackList.ActiveTrack)] = (handler, view) => handler.PlatformView.SetActiveTrack(view.ActiveTrack)
         };
 
     protected override LibraryRecyclerView CreatePlatformView() => new(Context);
 
+    protected override void ConnectHandler(LibraryRecyclerView platformView)
+    {
+        base.ConnectHandler(platformView);
+        platformView.TrackTapped = track => VirtualView.Tap(track);
+    }
+
     protected override void DisconnectHandler(LibraryRecyclerView platformView)
     {
         platformView.SetItems([]);
+        platformView.SetActiveTrack(null);
+        platformView.TrackTapped = null;
         base.DisconnectHandler(platformView);
     }
 }
@@ -36,31 +45,28 @@ internal sealed class LibraryTrackListHandler() : ViewHandler<LibraryTrackList, 
 internal sealed class LibraryRecyclerView : RecyclerView
 {
     private readonly float density;
-    private readonly int maxFlingVelocity;
     private readonly LinearLayoutManager layoutManager;
     private readonly LibraryTrackAdapter adapter;
-    private readonly FastScrollOverlay fastScroll;
-    private bool draggingThumb;
+    private TaskCompletionSource? flingFinished;
+    internal Action<LibraryTrack>? TrackTapped { get; set; }
 
     public LibraryRecyclerView(Context context) : base(context)
     {
         var metrics = context.Resources!.DisplayMetrics!;
         density = metrics.Density;
-        maxFlingVelocity = ViewConfiguration.Get(context)?.ScaledMaximumFlingVelocity ?? (int)(8000f * density);
 
         layoutManager = new LinearLayoutManager(context, LinearLayoutManager.Vertical, false)
         {
             ItemPrefetchEnabled = true,
             InitialPrefetchItemCount = 10
         };
-        adapter = new LibraryTrackAdapter();
-        fastScroll = new FastScrollOverlay(this, density);
+        adapter = new LibraryTrackAdapter(WaitForFlingAsync, track => TrackTapped?.Invoke(track));
 
         // Decouple completely from MAUI's outer CoordinatorLayout/AppBarLayout nested scroll interception.
         NestedScrollingEnabled = false;
         HasFixedSize = true;
-        OverScrollMode = OverScrollMode.Always;
-        VerticalScrollBarEnabled = false;
+        OverScrollMode = OverScrollMode.Never;
+        VerticalScrollBarEnabled = true;
         HorizontalScrollBarEnabled = false;
         SetClipToPadding(false);
         SetPadding(0, 0, 0, (int)Math.Ceiling(12f * density));
@@ -69,8 +75,7 @@ internal sealed class LibraryRecyclerView : RecyclerView
         GetRecycledViewPool().SetMaxRecycledViews(0, 24);
         SetLayoutManager(layoutManager);
         AddItemDecoration(new RowSpacingDecoration((int)Math.Round(8f * density)));
-        AddItemDecoration(fastScroll);
-        AddOnScrollListener(new FastScrollListener(fastScroll));
+        AddOnScrollListener(new FlingPauseListener(this));
         SetAdapter(adapter);
     }
 
@@ -79,7 +84,31 @@ internal sealed class LibraryRecyclerView : RecyclerView
         StopScroll();
         adapter.Update(items ?? []);
         ScrollToPosition(0);
-        fastScroll.OnItemsChanged();
+        SetFlinging(false);
+    }
+
+    public void SetActiveTrack(LibraryTrack? track) => adapter.SetActiveTrack(track);
+
+    protected override void OnDetachedFromWindow()
+    {
+        SetFlinging(false);
+        base.OnDetachedFromWindow();
+    }
+
+    private Task WaitForFlingAsync() => flingFinished?.Task ?? Task.CompletedTask;
+
+    private void SetFlinging(bool flinging)
+    {
+        if (flinging)
+        {
+            flingFinished ??= new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+        else
+        {
+            var pending = flingFinished;
+            flingFinished = null;
+            pending?.TrySetResult();
+        }
     }
 
     protected override void OnMeasure(int widthSpec, int heightSpec)
@@ -93,62 +122,6 @@ internal sealed class LibraryRecyclerView : RecyclerView
         base.OnMeasure(widthSpec, heightSpec);
     }
 
-    public override bool OnInterceptTouchEvent(MotionEvent? e)
-    {
-        if (e is null) return false;
-
-        if (e.ActionMasked == MotionEventActions.Down)
-        {
-            Parent?.RequestDisallowInterceptTouchEvent(true);
-            if (fastScroll.TryBeginDrag(e.GetX(), e.GetY()))
-            {
-                StopScroll();
-                draggingThumb = true;
-                return true;
-            }
-            draggingThumb = false;
-        }
-
-        return base.OnInterceptTouchEvent(e);
-    }
-
-    public override bool OnTouchEvent(MotionEvent? e)
-    {
-        if (e is null) return false;
-
-        if (draggingThumb)
-        {
-            switch (e.ActionMasked)
-            {
-                case MotionEventActions.Move:
-                    fastScroll.DragTo(e.GetY(), layoutManager, adapter.ItemCount);
-                    return true;
-                case MotionEventActions.Up:
-                case MotionEventActions.Cancel:
-                    draggingThumb = false;
-                    fastScroll.EndDrag();
-                    return true;
-            }
-        }
-
-        return base.OnTouchEvent(e);
-    }
-
-    public override bool Fling(int velocityX, int velocityY)
-    {
-        float vyDp = Math.Abs(velocityY) / density;
-        if (vyDp > 900f)
-        {
-            // Smoothly ramp moderate single-finger flicks so comfortable swipes glide across long lists
-            // without requiring aggressive thumb flicks, while keeping slow flicks completely natural.
-            float boost = 1f + Math.Min(0.85f, (vyDp - 900f) / 2600f);
-            long scaled = (long)(velocityY * boost);
-            velocityY = (int)Math.Clamp(scaled, -maxFlingVelocity, maxFlingVelocity);
-        }
-
-        return base.Fling(velocityX, velocityY);
-    }
-
     private sealed class RowSpacingDecoration(int spacePx) : ItemDecoration
     {
         public override void GetItemOffsets(Rect outRect, NativeView view, RecyclerView parent, State state)
@@ -157,155 +130,17 @@ internal sealed class LibraryRecyclerView : RecyclerView
         }
     }
 
-    private sealed class FastScrollListener(FastScrollOverlay overlay) : OnScrollListener
+    private sealed class FlingPauseListener(LibraryRecyclerView owner) : OnScrollListener
     {
-        public override void OnScrolled(RecyclerView recyclerView, int dx, int dy)
-        {
-            if (dy != 0) overlay.NotifyScrolled();
-        }
-    }
-
-    private sealed class FastScrollOverlay : ItemDecoration
-    {
-        private const long HoldDurationMs = 1200;
-        private const long FadeDurationMs = 240;
-
-        private readonly RecyclerView owner;
-        private readonly float density;
-        private readonly Paint trackPaint = new(PaintFlags.AntiAlias) { Color = NativeColor.Argb(45, 32, 72, 63) };
-        private readonly Paint thumbPaint = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(37, 232, 164) };
-        private readonly RectF rect = new();
-        private long lastActiveUptime;
-        private float thumbTop;
-        private float thumbBottom;
-        private bool activeDrag;
-        private bool visible;
-
-        public FastScrollOverlay(RecyclerView owner, float density)
-        {
-            this.owner = owner;
-            this.density = density;
-        }
-
-        private float Dp(float value) => value * density;
-
-        public void OnItemsChanged()
-        {
-            activeDrag = false;
-            visible = false;
-            owner.Invalidate();
-        }
-
-        public void NotifyScrolled()
-        {
-            lastActiveUptime = SystemClock.UptimeMillis();
-            visible = true;
-            InvalidateStrip();
-        }
-
-        public bool TryBeginDrag(float x, float y)
-        {
-            if (!visible || owner.Width <= 0) return false;
-            if (x < owner.Width - Dp(30)) return false;
-            if (y < thumbTop - Dp(14) || y > thumbBottom + Dp(14)) return false;
-
-            activeDrag = true;
-            lastActiveUptime = SystemClock.UptimeMillis();
-            InvalidateStrip();
-            return true;
-        }
-
-        public void DragTo(float y, LinearLayoutManager manager, int itemCount)
-        {
-            if (itemCount <= 0) return;
-
-            float minThumbHeight = Dp(40);
-            float padVertical = Dp(4);
-            float trackHeight = Math.Max(1f, owner.Height - 2f * padVertical);
-            float thumbHeight = Math.Max(minThumbHeight, thumbBottom - thumbTop);
-            float scrollableTrack = Math.Max(1f, trackHeight - thumbHeight);
-            float fraction = Math.Clamp((y - padVertical - thumbHeight * 0.5f) / scrollableTrack, 0f, 1f);
-
-            int targetIndex = Math.Clamp((int)Math.Round(fraction * (itemCount - 1)), 0, itemCount - 1);
-            manager.ScrollToPositionWithOffset(targetIndex, 0);
-            lastActiveUptime = SystemClock.UptimeMillis();
-            visible = true;
-            InvalidateStrip();
-        }
-
-        public void EndDrag()
-        {
-            activeDrag = false;
-            lastActiveUptime = SystemClock.UptimeMillis();
-            InvalidateStrip();
-        }
-
-        private void InvalidateStrip()
-        {
-            int left = Math.Max(0, owner.Width - (int)Math.Ceiling(Dp(14)));
-            owner.PostInvalidateOnAnimation(left, 0, owner.Width, owner.Height);
-        }
-
-        public override void OnDrawOver(Canvas c, RecyclerView parent, State state)
-        {
-            if (!visible) return;
-
-            int range = parent.ComputeVerticalScrollRange();
-            int extent = parent.ComputeVerticalScrollExtent();
-            if (extent <= 0 || range <= extent * 1.35f)
-            {
-                visible = false;
-                return;
-            }
-
-            int alpha = 255;
-            if (!activeDrag)
-            {
-                long elapsed = SystemClock.UptimeMillis() - lastActiveUptime;
-                if (elapsed >= HoldDurationMs + FadeDurationMs)
-                {
-                    visible = false;
-                    return;
-                }
-                if (elapsed > HoldDurationMs)
-                {
-                    float t = 1f - (float)(elapsed - HoldDurationMs) / FadeDurationMs;
-                    alpha = Math.Clamp((int)(255f * t), 0, 255);
-                }
-                InvalidateStrip();
-            }
-
-            float padVertical = Dp(4);
-            float trackHeight = parent.Height - 2f * padVertical;
-            if (trackHeight <= Dp(40)) return;
-
-            int offset = parent.ComputeVerticalScrollOffset();
-            float thumbHeight = Math.Clamp(trackHeight * ((float)extent / range), Dp(40), trackHeight);
-            float fraction = Math.Clamp((float)offset / Math.Max(1, range - extent), 0f, 1f);
-            thumbTop = padVertical + fraction * (trackHeight - thumbHeight);
-            thumbBottom = thumbTop + thumbHeight;
-
-            float width = activeDrag ? Dp(6) : Dp(3.5f);
-            float right = parent.Width - Dp(1.5f);
-            float left = right - width;
-
-            if (activeDrag)
-            {
-                trackPaint.Alpha = 70;
-                rect.Set(left, padVertical, right, parent.Height - padVertical);
-                c.DrawRoundRect(rect, width * 0.5f, width * 0.5f, trackPaint);
-            }
-
-            thumbPaint.Alpha = activeDrag ? 255 : (int)(alpha * 0.85f);
-            rect.Set(left, thumbTop, right, thumbBottom);
-            c.DrawRoundRect(rect, width * 0.5f, width * 0.5f, thumbPaint);
-        }
+        public override void OnScrollStateChanged(RecyclerView recyclerView, int newState) =>
+            owner.SetFlinging(newState == ScrollStateSettling);
     }
 }
 
-internal sealed class LibraryTrackAdapter : RecyclerView.Adapter
+internal sealed class LibraryTrackAdapter(Func<Task> waitForFling, Action<LibraryTrack> tapTrack) : RecyclerView.Adapter
 {
     private IReadOnlyList<LibraryTrack> items = [];
+    private LibraryTrack? activeTrack;
 
     public override int ItemCount => items.Count;
 
@@ -315,13 +150,25 @@ internal sealed class LibraryTrackAdapter : RecyclerView.Adapter
         NotifyDataSetChanged();
     }
 
+    public void SetActiveTrack(LibraryTrack? current)
+    {
+        if (ReferenceEquals(activeTrack, current)) return;
+        var previous = activeTrack;
+        activeTrack = current;
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (ReferenceEquals(items[i], previous) || ReferenceEquals(items[i], current))
+                NotifyItemChanged(i);
+        }
+    }
+
     public override RecyclerView.ViewHolder OnCreateViewHolder(ViewGroup parent, int viewType) =>
-        new RowHolder(new LibrarySongRowView(parent.Context!));
+        new RowHolder(new LibrarySongRowView(parent.Context!, waitForFling, tapTrack));
 
     public override void OnBindViewHolder(RecyclerView.ViewHolder holder, int position)
     {
         if (holder is RowHolder rowHolder)
-            rowHolder.Row.Bind(items[position]);
+            rowHolder.Row.Bind(items[position], position + 1, ReferenceEquals(items[position], activeTrack));
     }
 
     public override void OnViewRecycled(Java.Lang.Object holder)
@@ -344,23 +191,30 @@ internal sealed class LibrarySongRowView : NativeView
     private readonly float density;
     private readonly int rowHeightPx;
     private readonly Paint surface = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(11, 29, 34) };
+    private readonly Paint activeSurface = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(16, 56, 50) };
     private readonly Paint border = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(32, 72, 63), StrokeWidth = 1f };
     private readonly Paint coverBackground = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(18, 51, 47) };
     private readonly Paint bitmapPaint = new(PaintFlags.FilterBitmap);
     private readonly TextPaint titlePaint = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(242, 248, 247) };
     private readonly TextPaint creditsPaint = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(154, 185, 181) };
-    private readonly TextPaint formatPaint = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(37, 232, 164), TextAlign = Paint.Align.Right };
+    private readonly TextPaint durationPaint = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(154, 185, 181), TextAlign = Paint.Align.Right };
+    private readonly TextPaint numberPaint = new(PaintFlags.AntiAlias) { Color = NativeColor.Rgb(122, 158, 154), TextAlign = Paint.Align.Center };
     private readonly Drawable? fallback;
+    private readonly Func<Task> waitForFling;
     private readonly RectF cardRect = new();
     private readonly RectF destination = new();
     private LibraryTrack? track;
     private Bitmap? cover;
     private string title = "";
     private string credits = "";
+    private string number = "";
+    private bool active;
     private int version;
 
-    public LibrarySongRowView(Context context) : base(context)
+    public LibrarySongRowView(Context context, Func<Task> waitForFling, Action<LibraryTrack> tapTrack) : base(context)
     {
+        this.waitForFling = waitForFling;
+        Click += (_, _) => { if (track is { } item) tapTrack(item); };
         var metrics = context.Resources!.DisplayMetrics!;
         density = metrics.Density;
         border.SetStyle(Paint.Style.Stroke);
@@ -368,7 +222,8 @@ internal sealed class LibrarySongRowView : NativeView
         titlePaint.SetTypeface(Typeface.DefaultBold);
         titlePaint.TextSize = TypedValue.ApplyDimension(ComplexUnitType.Sp, 15, metrics);
         creditsPaint.TextSize = TypedValue.ApplyDimension(ComplexUnitType.Sp, 13, metrics);
-        formatPaint.TextSize = TypedValue.ApplyDimension(ComplexUnitType.Sp, 11, metrics);
+        durationPaint.TextSize = TypedValue.ApplyDimension(ComplexUnitType.Sp, 11, metrics);
+        numberPaint.TextSize = durationPaint.TextSize;
         rowHeightPx = (int)Math.Ceiling(Math.Max(Dp(64), titlePaint.TextSize + creditsPaint.TextSize + Dp(20)));
         fallback = context.GetDrawable(Resource.Drawable.sixteenth_notes)?.Mutate();
         LayoutParameters = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MatchParent, rowHeightPx);
@@ -377,10 +232,15 @@ internal sealed class LibrarySongRowView : NativeView
 
     private float Dp(float value) => value * density;
 
-    public void Bind(LibraryTrack value)
+    public void Bind(LibraryTrack value, int position, bool isActive)
     {
         int request = ++version;
         track = value;
+        active = isActive;
+        number = isActive ? "●" : position.ToString();
+        titlePaint.Color = isActive ? NativeColor.Rgb(37, 232, 164) : NativeColor.Rgb(242, 248, 247);
+        border.Color = isActive ? NativeColor.Rgb(47, 116, 99) : NativeColor.Rgb(32, 72, 63);
+        numberPaint.Color = isActive ? NativeColor.Rgb(37, 232, 164) : NativeColor.Rgb(122, 158, 154);
         UpdateText(value);
 
         string? path = value.ArtworkPath;
@@ -404,11 +264,12 @@ internal sealed class LibrarySongRowView : NativeView
     {
         base.OnInitializeAccessibilityNodeInfo(info);
         if (info is not null && track is not null)
-            info.ContentDescription = track.AccessibilityLabel;
+            info.ContentDescription = active ? $"{track.AccessibilityLabel}. Pista activa." : track.AccessibilityLabel;
     }
 
     private async Task LoadCoverAsync(string path, int request)
     {
+        await waitForFling().ConfigureAwait(false);
         if (request != Volatile.Read(ref version)) return;
 
         Bitmap? bitmap = await Task.Run(async () =>
@@ -447,9 +308,9 @@ internal sealed class LibrarySongRowView : NativeView
         float halfStroke = border.StrokeWidth * 0.5f;
         cardRect.Set(halfStroke, halfStroke, w - halfStroke, h - halfStroke);
         float coverTop = (h - Dp(44)) * 0.5f;
-        destination.Set(Dp(9), coverTop, Dp(53), coverTop + Dp(44));
+        destination.Set(Dp(34), coverTop, Dp(78), coverTop + Dp(44));
         int iconTop = (int)((h - Dp(22)) * 0.5f);
-        fallback?.SetBounds((int)Dp(20), iconTop, (int)Dp(42), iconTop + (int)Dp(22));
+        fallback?.SetBounds((int)Dp(45), iconTop, (int)Dp(67), iconTop + (int)Dp(22));
         if (track is not null) UpdateText(track);
     }
 
@@ -462,10 +323,10 @@ internal sealed class LibrarySongRowView : NativeView
             return;
         }
 
-        if (current.CachedFormatWidth < 0f)
-            current.CachedFormatWidth = formatPaint.MeasureText(current.Format);
+        if (current.CachedDurationWidth < 0f)
+            current.CachedDurationWidth = durationPaint.MeasureText(current.Duration);
 
-        int availablePx = (int)(Width - Dp(82) - current.CachedFormatWidth);
+        int availablePx = (int)(Width - Dp(105) - current.CachedDurationWidth);
         if (availablePx <= 0)
         {
             title = "";
@@ -489,7 +350,7 @@ internal sealed class LibrarySongRowView : NativeView
         if (track is null) return;
 
         float corner = Dp(10);
-        canvas.DrawRoundRect(cardRect, corner, corner, surface);
+        canvas.DrawRoundRect(cardRect, corner, corner, active ? activeSurface : surface);
         canvas.DrawRoundRect(cardRect, corner, corner, border);
 
         if (cover is { } bitmap)
@@ -503,8 +364,9 @@ internal sealed class LibrarySongRowView : NativeView
         }
 
         float middle = Height * 0.5f;
-        canvas.DrawText(title, Dp(63), middle - Dp(3), titlePaint);
-        canvas.DrawText(credits, Dp(63), middle + creditsPaint.TextSize, creditsPaint);
-        canvas.DrawText(track.Format, Width - Dp(10), middle - (formatPaint.Ascent() + formatPaint.Descent()) * 0.5f, formatPaint);
+        canvas.DrawText(number, Dp(17), middle - (numberPaint.Ascent() + numberPaint.Descent()) * 0.5f, numberPaint);
+        canvas.DrawText(title, Dp(88), middle - Dp(3), titlePaint);
+        canvas.DrawText(credits, Dp(88), middle + creditsPaint.TextSize, creditsPaint);
+        canvas.DrawText(track.Duration, Width - Dp(10), middle - (durationPaint.Ascent() + durationPaint.Descent()) * 0.5f, durationPaint);
     }
 }
