@@ -1,3 +1,6 @@
+using MusicLayer.Application.Abstractions;
+using MusicLayer.Application.UseCases.Lyrics;
+using MusicLayer.Shared.Lyrics;
 using MusicLayer.Shared.Metadata;
 using MusicLayer.Presentation.Maui.Platforms.Android;
 
@@ -12,10 +15,30 @@ public static class MauiProgram
         builder.ConfigureMauiHandlers(handlers => handlers.AddHandler<LibraryTrackList, LibraryTrackListHandler>());
         builder.Services.AddSingleton<TagLibTrackMetadataReader>();
         builder.Services.AddSingleton<AndroidPlayback>();
+        builder.Services.AddSingleton<LocalLrcStore>();
+        builder.Services.AddSingleton<ILocalLyricsReader>(services => services.GetRequiredService<LocalLrcStore>());
+        builder.Services.AddSingleton(_ => CreateLyricsHttpClient());
+        builder.Services.AddSingleton<LrclibClient>();
+        builder.Services.AddSingleton<ILyricsCache>(_ => new JsonLyricsCache(Path.Combine(FileSystem.CacheDirectory, "lyrics")));
+        builder.Services.AddSingleton<ILyricsProvider>(services => new CachedLyricsProvider(
+            services.GetRequiredService<LrclibClient>(), services.GetRequiredService<ILyricsCache>()));
+        builder.Services.AddSingleton<LoadTrackLyrics>();
+        builder.Services.AddTransient<LyricsPage>();
         builder.Services.AddTransient<PlaybackPage>();
         builder.Services.AddTransient<LibraryPage>();
         builder.Services.AddTransient<AppShell>();
         return builder.Build();
+    }
+
+    private static HttpClient CreateLyricsHttpClient()
+    {
+        var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+        {
+            BaseAddress = new Uri("https://lrclib.net"),
+            Timeout = TimeSpan.FromSeconds(8)
+        };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd($"Tonic/{AppInfo.VersionString} (https://github.com/HenC1709/MusicLayerr)");
+        return client;
     }
 }
 

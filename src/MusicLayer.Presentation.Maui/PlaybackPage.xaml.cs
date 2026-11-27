@@ -36,6 +36,7 @@ public partial class PlaybackPage : ContentPage
     private PlaybackQueueRow[] queueRows = [];
     private PlaybackQueueRow? activeQueueRow;
     internal event EventHandler? LibraryRequested;
+    internal event EventHandler? LyricsRequested;
 
     public PlaybackPage(AndroidPlayback playback, TagLibTrackMetadataReader metadata)
     {
@@ -211,6 +212,5 @@ public partial class PlaybackPage : ContentPage
     private void Shuffle(object? sender, EventArgs e) => playback.ToggleShuffle();
     private void Repeat(object? sender, EventArgs e) => playback.CycleRepeat();
     private void ReturnToLibrary(object? sender, EventArgs e) => LibraryRequested?.Invoke(this, e);
-    private async void ShowLyricsPlaceholder(object? sender, EventArgs e) =>
-        await DisplayAlertAsync("Letras", "Trabajando en ello", "Aceptar");
+    private void OpenLyrics(object? sender, EventArgs e) => LyricsRequested?.Invoke(this, e);
 }

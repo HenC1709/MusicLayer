@@ -6,8 +6,8 @@
     <SingleProject>true</SingleProject>
     <ApplicationTitle>Tonic</ApplicationTitle>
     <ApplicationId>com.musiclayer.tonic</ApplicationId>
-    <ApplicationDisplayVersion>1.0.8</ApplicationDisplayVersion>
-    <ApplicationVersion>9</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.9</ApplicationDisplayVersion>
+    <ApplicationVersion>10</ApplicationVersion>
     <SupportedOSPlatformVersion>33.0</SupportedOSPlatformVersion>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <UseDefaultPublishRuntimeIdentifier>false</UseDefaultPublishRuntimeIdentifier>

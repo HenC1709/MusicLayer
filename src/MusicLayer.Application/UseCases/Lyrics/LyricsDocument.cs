@@ -5,18 +5,20 @@ public enum LyricsDocumentKind { Synchronized, Plain, Instrumental, NotFound, Te
 public sealed class LyricsDocument
 {
     private LyricsDocument(LyricsDocumentKind kind, IReadOnlyList<TimedLyricLine>? lines = null, string? plainText = null,
-        DateTimeOffset? retryAfter = null)
+        DateTimeOffset? retryAfter = null, bool isLocal = false)
     {
         Kind = kind;
         Lines = lines ?? [];
         PlainText = plainText;
         RetryAfter = retryAfter;
+        IsLocal = isLocal;
     }
 
     public LyricsDocumentKind Kind { get; }
     public IReadOnlyList<TimedLyricLine> Lines { get; }
     public string? PlainText { get; }
     public DateTimeOffset? RetryAfter { get; }
+    public bool IsLocal { get; }
 
     public static LyricsDocument FromLookup(LyricsLookupResult result)
     {
@@ -30,11 +32,11 @@ public sealed class LyricsDocument
         return FromLrc(record.SyncedLyrics, record.PlainLyrics);
     }
 
-    internal static LyricsDocument FromLrc(string? syncedLyrics, string? plainLyrics = null)
+    internal static LyricsDocument FromLrc(string? syncedLyrics, string? plainLyrics = null, bool isLocal = false)
     {
         var lines = LrcParser.Parse(syncedLyrics);
         if (lines.Any(line => line.Text.Length > 0))
-            return new(LyricsDocumentKind.Synchronized, lines);
+            return new(LyricsDocumentKind.Synchronized, lines, isLocal: isLocal);
         if (!string.IsNullOrWhiteSpace(plainLyrics))
             return new(LyricsDocumentKind.Plain, plainText: plainLyrics);
         return new(LyricsDocumentKind.NotFound);

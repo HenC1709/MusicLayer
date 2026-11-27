@@ -37,7 +37,7 @@
                             <Label x:Name="PlaybackHeading" Grid.Column="1" Text="Reproducción" FontSize="12" FontAttributes="Bold"
                                    TextColor="#F2F8F7" VerticalOptions="Center" />
                         </Grid>
-                        <Button Grid.Column="2" Text="Letras" Clicked="ShowLyricsPlaceholder"
+                        <Button Grid.Column="2" Text="Letras" Clicked="OpenLyrics"
                                 MinimumHeightRequest="44" Padding="10,0" FontSize="12" FontAttributes="Bold"
                                 CornerRadius="22" BackgroundColor="#103832" TextColor="#25E8A4"
                                 BorderColor="#296454" BorderWidth="1" />

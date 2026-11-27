@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:MusicLayer.Presentation.Maui"
+             xmlns:lyrics="clr-namespace:MusicLayer.Shared.ViewModels;assembly=MusicLayer.Shared"
+             x:Class="MusicLayer.Presentation.Maui.LyricsPage" x:DataType="lyrics:LyricsViewModel"
+             Title="Letras" BackgroundColor="#050D10" SafeAreaEdges="All">
+    <ContentPage.Resources>
+        <Style x:Key="LyricsAction" TargetType="Button">
+            <Setter Property="MinimumWidthRequest" Value="44" />
+            <Setter Property="MinimumHeightRequest" Value="44" />
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
+    </ContentPage.Resources>
+    <Grid Padding="16,8" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="8">
+        <Grid.Background>
+            <RadialGradientBrush Center="0.8,0.16" Radius="0.7">
+                <GradientStop Color="#102A29" Offset="0" />
+                <GradientStop Color="#081719" Offset="0.53" />
+                <GradientStop Color="#050D10" Offset="1" />
+            </RadialGradientBrush>
+        </Grid.Background>
+        <local:TonicHeader ShowLibraryActions="True" SearchRequested="SearchLibrary" ImportRequested="ImportMusic" />
+        <Border Grid.Row="1" x:Name="TrackCard" BackgroundColor="#B80B1D22" Stroke="#20483F"
+                StrokeShape="RoundRectangle 16" Padding="12,8" Margin="0,4,0,0"
+                MinimumHeightRequest="64" IsVisible="False">
+            <Grid ColumnDefinitions="40,*,Auto" ColumnSpacing="10">
+                <Border WidthRequest="40" HeightRequest="40" VerticalOptions="Center"
+                        BackgroundColor="#0B1D22" Stroke="#296454" StrokeShape="RoundRectangle 10">
+                    <Image x:Name="Cover" Aspect="AspectFill" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label x:Name="TrackTitle" TextColor="#F2F8F7" FontSize="13" FontAttributes="Bold"
+                           MaxLines="1" LineBreakMode="TailTruncation" />
+                    <Label x:Name="Credits" TextColor="#9AB9B5" FontSize="11" MaxLines="1"
+                           LineBreakMode="TailTruncation" />
+                </VerticalStackLayout>
+                <Grid Grid.Column="2">
+                    <VerticalStackLayout Spacing="3" VerticalOptions="Center" InputTransparent="True">
+                        <Border HorizontalOptions="End" BackgroundColor="#103832" Stroke="#296454"
+                                StrokeShape="RoundRectangle 5" Padding="7,2">
+                            <Label x:Name="Mode" TextColor="#25E8A4" FontSize="10" FontAttributes="Bold" />
+                        </Border>
+                        <Label x:Name="SourceLabel" TextColor="#9AB9B5" FontSize="10" HorizontalTextAlignment="End" />
+                    </VerticalStackLayout>
+                    <Button Clicked="OpenLyricsOptions" Padding="0" BackgroundColor="Transparent"
+                            MinimumWidthRequest="44" MinimumHeightRequest="44"
+                            SemanticProperties.Description="Opciones de letra" />
+                </Grid>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="2" Margin="0,8,0,0" IsClippedToBounds="True">
+            <CollectionView x:Name="VerseList" ItemsSource="{Binding Rows}" SelectionMode="None" IsVisible="False"
+                            Scrolled="ReadVersesManually">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="lyrics:LyricRow">
+                        <Grid ColumnDefinitions="3,*" ColumnSpacing="13" Margin="8,0,3,0" MinimumHeightRequest="44">
+                            <Grid.Triggers>
+                                <DataTrigger TargetType="Grid" Binding="{Binding Text}" Value="">
+                                    <Setter Property="IsVisible" Value="False" />
+                                </DataTrigger>
+                            </Grid.Triggers>
+                            <BoxView Color="#25E8A4" IsVisible="{Binding IsActive}" Margin="0,2" />
+                            <Label Grid.Column="1" Text="{Binding Text}" InputTransparent="True"
+                                   TextColor="#6D8987" FontSize="17" FontAttributes="Bold"
+                                   VerticalOptions="Center" Margin="0,5" LineBreakMode="WordWrap">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding Emphasis}" Value="{x:Static lyrics:LyricEmphasis.Nearby}">
+                                        <Setter Property="TextColor" Value="#86A19D" />
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsActive}" Value="True">
+                                        <Setter Property="TextColor" Value="#F2F8F7" />
+                                        <Setter Property="FontSize" Value="22" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                            <Button Grid.ColumnSpan="2" Clicked="SeekToVerse" Padding="0" BackgroundColor="Transparent"
+                                    MinimumHeightRequest="44" SemanticProperties.Description="{Binding Text}" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <ScrollView x:Name="PlainLyrics" IsVisible="False">
+                <Label Text="{Binding PlainText}" TextColor="#C3D5D2" FontSize="17" LineHeight="1.4" Margin="12,4" />
+            </ScrollView>
+            <ScrollView x:Name="StatePanel">
+                <Border BackgroundColor="#B80B1D22" Stroke="#20483F" StrokeShape="RoundRectangle 16" Padding="14"
+                        VerticalOptions="Start">
+                    <Grid ColumnDefinitions="44,*" ColumnSpacing="12">
+                        <Border WidthRequest="44" HeightRequest="44" Stroke="#296454"
+                                StrokeShape="RoundRectangle 13" BackgroundColor="#103832" VerticalOptions="Start">
+                            <Grid>
+                                <Image x:Name="StateIcon" Source="audio_lines.png" WidthRequest="22" HeightRequest="22" />
+                                <ActivityIndicator x:Name="Loading" Color="#25E8A4" IsVisible="False"
+                                                   WidthRequest="22" HeightRequest="22" />
+                            </Grid>
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="6">
+                            <Label Text="{Binding Status}" FontSize="16" FontAttributes="Bold" TextColor="#F2F8F7"
+                                   SemanticProperties.HeadingLevel="Level1" />
+                            <Label x:Name="StateMessage" FontSize="13" TextColor="#9AB9B5" />
+                            <FlexLayout Wrap="Wrap" x:Name="StateActions" IsVisible="False">
+                                <Button x:Name="Retry" Text="Buscar letra" Style="{StaticResource LyricsAction}" Clicked="RetryLookup"
+                                        BackgroundColor="#25E8A4" TextColor="#041410" Margin="0,4,8,0" />
+                                <Button x:Name="AddLrc" Text="Añadir letra" Style="{StaticResource LyricsAction}" Clicked="AddLyrics"
+                                        BackgroundColor="#0B1D22" TextColor="#F2F8F7" BorderColor="#20483F" BorderWidth="1"
+                                        Margin="0,4,0,0" />
+                            </FlexLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+            </ScrollView>
+        </Grid>
+        <Label Grid.Row="3" x:Name="ReadingHint" FontSize="11" TextColor="#789894"
+               HorizontalTextAlignment="Center" Margin="0,0,0,2" IsVisible="False" />
+        <local:MiniPlayer Grid.Row="4" x:Name="MiniPlayer" OpenRequested="OpenPlayback" />
+    </Grid>
+</ContentPage>

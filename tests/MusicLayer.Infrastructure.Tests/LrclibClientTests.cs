@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Domain.Entities;
-using MusicLayer.Infrastructure.Lyrics;
+using MusicLayer.Shared.Lyrics;
 using Xunit;
 
 namespace MusicLayer.Infrastructure.Tests;

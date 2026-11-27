@@ -12,8 +12,16 @@ public sealed class CachedLyricsProvider(ILyricsProvider remote, ILyricsCache ca
     private readonly SemaphoreSlim lookupGate = new(1, 1);
     private readonly Dictionary<LyricsCacheKey, DateTimeOffset> missing = [];
 
-    public async Task<LyricsLookupResult> LookupAsync(
+    public Task<LyricsLookupResult> LookupAsync(
         TrackMetadata metadata, TimeSpan? duration, CancellationToken cancellationToken = default)
+        => LookupCoreAsync(metadata, duration, refresh: false, cancellationToken);
+
+    public Task<LyricsLookupResult> RefreshAsync(
+        TrackMetadata metadata, TimeSpan? duration, CancellationToken cancellationToken = default)
+        => LookupCoreAsync(metadata, duration, refresh: true, cancellationToken);
+
+    private async Task<LyricsLookupResult> LookupCoreAsync(
+        TrackMetadata metadata, TimeSpan? duration, bool refresh, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var key = LyricsCacheKey.FromTrack(metadata, duration);
@@ -32,7 +40,7 @@ public sealed class CachedLyricsProvider(ILyricsProvider remote, ILyricsCache ca
                     return cached;
             }
 
-            if (missing.TryGetValue(key, out var expiresAt) && expiresAt > time.GetUtcNow())
+            if (!refresh && missing.TryGetValue(key, out var expiresAt) && expiresAt > time.GetUtcNow())
                 return new(LyricsLookupStatus.NotFound);
 
             missing.Remove(key);

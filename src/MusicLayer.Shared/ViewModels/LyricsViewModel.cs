@@ -51,6 +51,7 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
     private CancellationTokenSource? request;
     private Task pending = Task.CompletedTask;
     private Song? track;
+    private string? localKey;
     private PlaybackProgress? progress;
     private LyricsDocument? document;
     private bool sampled;
@@ -60,6 +61,8 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
     public event PropertyChangedEventHandler? PropertyChanged;
     public IReadOnlyList<LyricRow> Rows { get; private set; } = [];
     public string? PlainText => document?.PlainText;
+    public LyricsDocumentKind? DocumentKind => document?.Kind;
+    public bool UsesLocalFile => document?.IsLocal == true;
     public bool HasLyrics => Rows.Count > 0 || PlainText is not null;
     public bool CanRetry => IsOpen && !closed && request is null &&
         document?.Kind is LyricsDocumentKind.NotFound or LyricsDocumentKind.TemporarilyUnavailable;
@@ -77,9 +80,10 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
         }
     }
 
-    internal void ChangeTrack(Song? song)
+    public void ChangeTrack(Song? song, string? localFileKey = null)
     {
         track = song;
+        localKey = localFileKey;
         progress = null;
         sampled = false;
         ResetDocument();
@@ -98,11 +102,11 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
     {
         if (!CanRetry) return Task.CompletedTask;
         requested = false;
-        StartIfReady();
+        StartIfReady(refresh: true);
         return pending;
     }
 
-    internal void ObserveProgress(PlaybackProgress? snapshot)
+    public void ObserveProgress(PlaybackProgress? snapshot)
     {
         progress = snapshot;
         sampled = true;
@@ -110,22 +114,22 @@ public sealed class LyricsViewModel(LoadTrackLyrics loadLyrics, Func<TimeSpan, T
         UpdateActiveLine();
     }
 
-    private void StartIfReady()
+    private void StartIfReady(bool refresh = false)
     {
         if (!IsOpen || !sampled || requested || closed || track is null) return;
         requested = true;
         request = new CancellationTokenSource();
         SetStatus("Buscando letra…");
         Notify(nameof(CanRetry));
-        var lookup = LoadAsync(track, progress?.Duration, request);
+        var lookup = LoadAsync(track, progress?.Duration ?? track.Metadata?.Duration, localKey, refresh, request);
         pending = pending.IsCompleted ? lookup : Task.WhenAll(pending, lookup);
     }
 
-    private async Task LoadAsync(Song song, TimeSpan? duration, CancellationTokenSource source)
+    private async Task LoadAsync(Song song, TimeSpan? duration, string? key, bool refresh, CancellationTokenSource source)
     {
         try
         {
-            var parsed = await loadLyrics.ExecuteAsync(song, duration, source.Token);
+            var parsed = await loadLyrics.ExecuteAsync(song, duration, source.Token, key, refresh);
             if (request != source || source.IsCancellationRequested) return;
             document = parsed;
             Rows = parsed.Lines.Select(line => new LyricRow(line)).ToArray();

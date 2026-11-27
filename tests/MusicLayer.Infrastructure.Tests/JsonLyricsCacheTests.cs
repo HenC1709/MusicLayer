@@ -1,7 +1,7 @@
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Domain.Entities;
-using MusicLayer.Infrastructure.Lyrics;
+using MusicLayer.Shared.Lyrics;
 using Xunit;
 
 namespace MusicLayer.Infrastructure.Tests;
@@ -107,6 +107,21 @@ public sealed class JsonLyricsCacheTests : IDisposable
         next = Found(Track, Length);
         Assert.Equal(next, await provider.LookupAsync(Track, Length));
         Assert.Equal(3, remote.Calls);
+    }
+
+    [Fact]
+    public async Task ExplicitSearchBypassesRememberedMiss()
+    {
+        var next = new LyricsLookupResult(LyricsLookupStatus.NotFound);
+        var remote = new StubProvider((_, _, _) => Task.FromResult(next));
+        using var provider = new CachedLyricsProvider(remote, new JsonLyricsCache(folder.FullName));
+
+        Assert.Equal(LyricsLookupStatus.NotFound, (await provider.LookupAsync(Track, Length)).Status);
+        next = Found(Track, Length);
+        Assert.Equal(LyricsLookupStatus.NotFound, (await provider.LookupAsync(Track, Length)).Status);
+        Assert.Equal(next, await provider.RefreshAsync(Track, Length));
+        Assert.Equal(next, await provider.LookupAsync(Track, Length));
+        Assert.Equal(2, remote.Calls);
     }
 
     [Fact]

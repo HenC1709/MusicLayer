@@ -14,24 +14,31 @@ namespace MusicLayer.Presentation.Maui.Platforms.Android;
     ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public sealed class MainActivity : MauiAppCompatActivity
 {
-    private const int PickAudioRequest = 271;
-    private TaskCompletionSource<string[]>? audioSelection;
+    private const int PickDocumentRequest = 271;
+    private TaskCompletionSource<string[]>? documentSelection;
 
-    internal Task<string[]> PickAudioAsync()
+    internal Task<string[]> PickAudioAsync() =>
+        PickDocumentsAsync(["audio/*", "application/flac", "application/x-flac"], allowMultiple: true);
+
+    internal async Task<string?> PickLrcAsync() =>
+        (await PickDocumentsAsync(mimeTypes: null, allowMultiple: false)).FirstOrDefault();
+
+    private Task<string[]> PickDocumentsAsync(string[]? mimeTypes, bool allowMultiple)
     {
-        if (audioSelection is not null) return audioSelection.Task;
+        if (documentSelection is not null) return Task.FromResult(Array.Empty<string>());
         using var intent = new Intent(Intent.ActionOpenDocument);
         intent.AddCategory(Intent.CategoryOpenable);
         intent.SetType("*/*");
-        intent.PutExtra(Intent.ExtraMimeTypes, new[] { "audio/*", "application/flac", "application/x-flac" });
-        intent.PutExtra(Intent.ExtraAllowMultiple, true);
-        intent.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantPersistableUriPermission);
+        if (mimeTypes is not null) intent.PutExtra(Intent.ExtraMimeTypes, mimeTypes);
+        intent.PutExtra(Intent.ExtraAllowMultiple, allowMultiple);
+        intent.AddFlags(ActivityFlags.GrantReadUriPermission);
+        if (allowMultiple) intent.AddFlags(ActivityFlags.GrantPersistableUriPermission);
         var completion = new TaskCompletionSource<string[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-        audioSelection = completion;
-        try { StartActivityForResult(intent, PickAudioRequest); }
+        documentSelection = completion;
+        try { StartActivityForResult(intent, PickDocumentRequest); }
         catch (ActivityNotFoundException error)
         {
-            audioSelection = null;
+            documentSelection = null;
             completion.SetException(new IOException("No hay un selector de archivos disponible.", error));
         }
         return completion.Task;
@@ -40,9 +47,9 @@ public sealed class MainActivity : MauiAppCompatActivity
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
-        if (requestCode != PickAudioRequest) return;
-        var selection = audioSelection;
-        audioSelection = null;
+        if (requestCode != PickDocumentRequest) return;
+        var selection = documentSelection;
+        documentSelection = null;
         List<string> files = [];
         if (resultCode == Result.Ok && data is not null)
         {
@@ -58,8 +65,8 @@ public sealed class MainActivity : MauiAppCompatActivity
 
     protected override void OnDestroy()
     {
-        audioSelection?.TrySetCanceled();
-        audioSelection = null;
+        documentSelection?.TrySetCanceled();
+        documentSelection = null;
         base.OnDestroy();
     }
 

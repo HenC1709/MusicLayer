@@ -2,11 +2,12 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Lyrics;
 using MusicLayer.Domain.Entities;
 
-namespace MusicLayer.Infrastructure.Lyrics;
+namespace MusicLayer.Shared.Lyrics;
 
 public sealed class LrclibClient(HttpClient http, TimeProvider? timeProvider = null) : ILyricsProvider, IDisposable
 {
@@ -37,11 +38,13 @@ public sealed class LrclibClient(HttpClient http, TimeProvider? timeProvider = n
             if (retryAt > time.GetUtcNow())
                 return Unavailable();
 
-            var direct = await GetAsync<LyricsRecord>($"api/get?{lookup}", cancellationToken).ConfigureAwait(false);
+            var direct = await GetAsync($"api/get?{lookup}", LyricsJsonContext.Default.LyricsRecord, cancellationToken)
+                .ConfigureAwait(false);
             if (direct is not null && matcher.AcceptDirectMatch(direct))
                 return ToResult(direct);
 
-            var candidates = await GetAsync<LyricsRecord?[]>($"api/search?{signature}", cancellationToken).ConfigureAwait(false);
+            var candidates = await GetAsync($"api/search?{signature}", LyricsJsonContext.Default.LyricsRecordArray, cancellationToken)
+                .ConfigureAwait(false);
             return ToResult(candidates is null ? null : matcher.ChooseMatch(candidates));
         }
         catch (Exception error) when (error is HttpRequestException or IOException or JsonException
@@ -53,7 +56,7 @@ public sealed class LrclibClient(HttpClient http, TimeProvider? timeProvider = n
         finally { gate.Release(); }
     }
 
-    private async Task<T?> GetAsync<T>(string path, CancellationToken cancellationToken) where T : class
+    private async Task<T?> GetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken cancellationToken) where T : class
     {
         var delay = nextRequestAt - time.GetUtcNow();
         if (delay > TimeSpan.Zero)
@@ -75,7 +78,7 @@ public sealed class LrclibClient(HttpClient http, TimeProvider? timeProvider = n
                 mediaType?.EndsWith("+json", StringComparison.OrdinalIgnoreCase) != true)
                 throw new JsonException("LRCLIB did not return JSON.");
 
-            return await response.Content.ReadFromJsonAsync<T>(cancellationToken).ConfigureAwait(false)
+            return await response.Content.ReadFromJsonAsync(type, cancellationToken).ConfigureAwait(false)
                 ?? throw new JsonException("LRCLIB returned a null payload.");
         }
         finally { nextRequestAt = time.GetUtcNow() + RequestSpacing; }

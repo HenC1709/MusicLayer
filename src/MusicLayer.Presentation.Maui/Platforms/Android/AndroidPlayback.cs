@@ -76,9 +76,11 @@ public sealed class AndroidPlayback
         Notify();
     }
 
-    public void Seek(int milliseconds)
+    public void Seek(int milliseconds, bool precise = false)
     {
-        if (ready) player!.SeekTo(Math.Clamp(milliseconds, 0, Duration), MediaPlayerSeekMode.ClosestSync);
+        if (ready)
+            player!.SeekTo(Math.Clamp(milliseconds, 0, Duration),
+                precise ? MediaPlayerSeekMode.Closest : MediaPlayerSeekMode.ClosestSync);
         Notify();
     }
 

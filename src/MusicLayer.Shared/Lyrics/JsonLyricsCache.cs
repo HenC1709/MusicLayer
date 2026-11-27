@@ -3,7 +3,7 @@ using System.Text.Json;
 using MusicLayer.Application.Abstractions;
 using MusicLayer.Application.UseCases.Lyrics;
 
-namespace MusicLayer.Infrastructure.Lyrics;
+namespace MusicLayer.Shared.Lyrics;
 
 public sealed class JsonLyricsCache(string directory) : ILyricsCache
 {
@@ -14,7 +14,7 @@ public sealed class JsonLyricsCache(string directory) : ILyricsCache
             {
                 await using var stream = new FileStream(GetPath(key), FileMode.Open, FileAccess.Read,
                     FileShare.Read | FileShare.Delete, bufferSize: 4096, useAsync: true);
-                return await JsonSerializer.DeserializeAsync<LyricsRecord>(stream, cancellationToken: cancellationToken)
+                return await JsonSerializer.DeserializeAsync(stream, LyricsJsonContext.Default.LyricsRecord, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
@@ -34,7 +34,7 @@ public sealed class JsonLyricsCache(string directory) : ILyricsCache
                 await using (var stream = new FileStream(stagingPath, FileMode.CreateNew, FileAccess.Write,
                     FileShare.None, bufferSize: 4096, useAsync: true))
                 {
-                    await JsonSerializer.SerializeAsync(stream, record, cancellationToken: cancellationToken)
+                    await JsonSerializer.SerializeAsync(stream, record, LyricsJsonContext.Default.LyricsRecord, cancellationToken)
                         .ConfigureAwait(false);
                 }
 
@@ -55,7 +55,7 @@ public sealed class JsonLyricsCache(string directory) : ILyricsCache
 
     private string GetPath(LyricsCacheKey key)
     {
-        var hash = SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(key));
+        var hash = SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(key, LyricsJsonContext.Default.LyricsCacheKey));
         return Path.Combine(directory, $"v1-{Convert.ToHexString(hash)}.json");
     }
 }

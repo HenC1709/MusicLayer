@@ -8,7 +8,7 @@ public partial class AppShell : Shell
     private readonly FlyoutItem main = new() { Route = "principal", Title = "Tonic" };
     private readonly Dictionary<Tab, Grid> menuRows = [];
 
-    public AppShell(LibraryPage library, PlaybackPage playbackPage, Platforms.Android.AndroidPlayback playback)
+    public AppShell(LibraryPage library, PlaybackPage playbackPage, LyricsPage lyrics, Platforms.Android.AndroidPlayback playback)
     {
         InitializeComponent();
 
@@ -18,9 +18,22 @@ public partial class AppShell : Shell
             "Explorá tu música, artistas y álbumes", () => library);
         var playbackTab = AddTab(menu, "reproducir", "Reproducir", "play.png",
             "Controlá la pista activa y la cola", () => playbackPage);
+        var lyricsTab = AddTab(menu, "letras", "Letras", "audio_lines.png",
+            "Seguí la letra de la pista activa", () => lyrics);
         library.PlaybackRequested += async (_, _) => await SelectTabAsync(playbackTab);
         playbackPage.LibraryRequested += async (_, _) => await SelectTabAsync(libraryTab);
-        AddPendingTab("letras", "Letras", "audio_lines.png", "Seguí la letra de la pista activa");
+        playbackPage.LyricsRequested += async (_, _) => await SelectTabAsync(lyricsTab);
+        lyrics.PlaybackRequested += async (_, _) => await SelectTabAsync(playbackTab);
+        lyrics.SearchRequested += async (_, _) =>
+        {
+            await SelectTabAsync(libraryTab);
+            library.OpenSearch();
+        };
+        lyrics.ImportRequested += async (_, _) =>
+        {
+            await SelectTabAsync(libraryTab);
+            await library.ImportSongsAsync();
+        };
         AddPendingTab("playlists", "Playlists", "list_music.png", "Organizá tu música en listas");
         menu.Children.Add(CreateMenuRow("Importar música", "Elegí archivos para tu biblioteca", "folder_open.png", async () =>
         {

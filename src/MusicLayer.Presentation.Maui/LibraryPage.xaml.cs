@@ -207,14 +207,22 @@ public partial class LibraryPage : ContentPage
 
     private void ToggleSearch(object? sender, EventArgs e)
     {
-        SearchPanel.IsVisible = !SearchPanel.IsVisible;
-        if (SearchPanel.IsVisible)
-            Search.Focus();
+        if (!SearchPanel.IsVisible)
+        {
+            OpenSearch();
+        }
         else
         {
+            SearchPanel.IsVisible = false;
             Search.Unfocus();
             Search.Text = "";
         }
+    }
+
+    internal void OpenSearch()
+    {
+        SearchPanel.IsVisible = true;
+        Search.Focus();
     }
 
     private void ClearQuery(object? sender, EventArgs e) => Search.Text = "";
